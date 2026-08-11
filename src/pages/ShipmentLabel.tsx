@@ -16,7 +16,6 @@ type Shipment = {
   destination_gps: string | null
   weight_kg: number | null
   cbm: number | null
-  total_charge: number | null
   status: string
 }
 
@@ -81,7 +80,7 @@ export default function ShipmentLabel() {
           </div>
         </div>
 
-        <div className="grid grid-cols-3 divide-x divide-gray-300 border-b border-gray-300 text-center">
+        <div className="grid grid-cols-2 divide-x divide-gray-300 border-b border-gray-300 text-center">
           <div className="px-2 py-3">
             <p className="text-xs text-slate">Weight</p>
             <p className="font-semibold">{shipment.weight_kg ?? '—'} kg</p>
@@ -89,10 +88,6 @@ export default function ShipmentLabel() {
           <div className="px-2 py-3">
             <p className="text-xs text-slate">CBM</p>
             <p className="font-semibold">{shipment.cbm?.toFixed(3) ?? '—'} m³</p>
-          </div>
-          <div className="px-2 py-3">
-            <p className="text-xs text-slate">Charge</p>
-            <p className="font-semibold">GHS {shipment.total_charge?.toFixed(2) ?? '—'}</p>
           </div>
         </div>
 
