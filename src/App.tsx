@@ -4,6 +4,8 @@ import TrackPage from './pages/TrackPage'
 import DriverPage from './pages/DriverPage'
 import StaffLogin from './pages/StaffLogin'
 import NewShipment from './pages/NewShipment'
+import ShipmentLabel from './pages/ShipmentLabel'
+import ShipmentInvoice from './pages/ShipmentInvoice'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
@@ -16,6 +18,8 @@ export default function App() {
         <Route path="/driver" element={<DriverPage />} />
         <Route path="/staff/login" element={<StaffLogin />} />
         <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
+        <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
+        <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )
