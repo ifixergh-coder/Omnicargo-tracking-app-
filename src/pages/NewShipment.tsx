@@ -22,6 +22,7 @@ export default function NewShipment() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<string | null>(null)
+  const [createdId, setCreatedId] = useState<string | null>(null)
 
   const cbm = useMemo(() => {
     const l = parseFloat(lengthCm), w = parseFloat(widthCm), h = parseFloat(heightCm)
@@ -39,7 +40,7 @@ export default function NewShipment() {
     setError(null)
     const trackingNumber = generateTrackingNumber()
 
-    const { error } = await supabase.from('shipments').insert({
+    const { data: inserted, error } = await supabase.from('shipments').insert({
       tracking_number: trackingNumber,
       sender_name: senderName, sender_phone: senderPhone || null, sender_email: senderEmail || null,
       recipient_name: recipientName, recipient_phone: recipientPhone || null, recipient_email: recipientEmail || null,
@@ -49,10 +50,10 @@ export default function NewShipment() {
       cbm: cbm || null, price_per_cbm: parseFloat(pricePerCbm) || null,
       included_kg_per_cbm: parseFloat(includedKgPerCbm) || null, extra_kg_rate: parseFloat(extraKgRate) || null,
       total_charge: pricing.total || null, status: 'pending',
-    })
+    }).select()
 
     if (error) { setError(error.message); setSaving(false) }
-    else setCreated(trackingNumber)
+    else { setCreated(trackingNumber); setCreatedId((inserted as any)?.[0]?.id ?? null) }
   }
 
   if (created) {
@@ -60,7 +61,12 @@ export default function NewShipment() {
       <div className="min-h-screen flex flex-col items-center justify-center px-6 text-center gap-3">
         <p className="text-navy font-semibold">Shipment created</p>
         <p className="font-mono text-lg">{created}</p>
-        <p className="text-sm text-slate">Invoice and label printing come next — for now this shipment is live and trackable.</p>
+        {createdId && (
+          <div className="flex gap-3">
+            <a href={`/staff/shipments/${createdId}/label`} className="text-orange underline">View label</a>
+            <a href={`/staff/shipments/${createdId}/invoice`} className="text-orange underline">View invoice</a>
+          </div>
+        )}
         <button onClick={() => window.location.reload()} className="text-orange underline mt-2">Create another</button>
       </div>
     )
