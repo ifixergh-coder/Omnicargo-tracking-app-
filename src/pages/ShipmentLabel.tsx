@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom'
 import JsBarcode from 'jsbarcode'
 import { QRCodeSVG } from 'qrcode.react'
 import { supabase } from '../lib/supabase'
+import { maskName, maskPhone } from '../lib/mask'
 
 type Shipment = {
   id: string
@@ -40,13 +41,13 @@ export default function ShipmentLabel() {
 
   if (!shipment) return <div className="p-8 text-center text-slate">Loading…</div>
 
-  // QR payload: staff scanner reads this to jump straight to the scan-update page
   const qrValue = `${window.location.origin}/staff/scan/${shipment.tracking_number}`
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
-      <div className="max-w-md mx-auto mb-4 print:hidden">
-        <button onClick={() => window.print()} className="w-full bg-orange text-white font-medium py-3 rounded-md">
+      <div className="max-w-md mx-auto mb-4 print:hidden flex gap-3">
+        <a href={`/staff/shipments`} className="text-orange underline text-sm self-center">← Back to shipments</a>
+        <button onClick={() => window.print()} className="ml-auto bg-orange text-white font-medium py-3 px-6 rounded-md">
           Print label
         </button>
       </div>
@@ -68,13 +69,13 @@ export default function ShipmentLabel() {
         <div className="grid grid-cols-2 divide-x divide-gray-300 border-b border-gray-300">
           <div className="px-4 py-3">
             <p className="text-xs font-semibold text-slate uppercase mb-1">Sender</p>
-            <p className="text-sm font-medium">{shipment.sender_name}</p>
-            {shipment.sender_phone && <p className="text-sm">{shipment.sender_phone}</p>}
+            <p className="text-sm font-medium">{maskName(shipment.sender_name)}</p>
+            <p className="text-sm">{maskPhone(shipment.sender_phone)}</p>
           </div>
           <div className="px-4 py-3">
             <p className="text-xs font-semibold text-slate uppercase mb-1">Recipient</p>
-            <p className="text-sm font-medium">{shipment.recipient_name}</p>
-            {shipment.recipient_phone && <p className="text-sm">{shipment.recipient_phone}</p>}
+            <p className="text-sm font-medium">{maskName(shipment.recipient_name)}</p>
+            <p className="text-sm">{maskPhone(shipment.recipient_phone)}</p>
             {shipment.destination_address && <p className="text-sm mt-1">{shipment.destination_address}</p>}
             {shipment.destination_gps && <p className="text-xs text-slate mt-1">GPS: {shipment.destination_gps}</p>}
           </div>
@@ -95,8 +96,9 @@ export default function ShipmentLabel() {
           </div>
         </div>
 
-        <div className="flex items-center justify-center py-4">
+        <div className="flex flex-col items-center justify-center py-4 gap-1">
           <QRCodeSVG value={qrValue} size={120} />
+          <p className="text-[10px] text-slate">Scan for full details</p>
         </div>
       </div>
     </div>
