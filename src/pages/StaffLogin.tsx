@@ -13,7 +13,7 @@ export default function StaffLogin() {
     setError(null)
     const { error } = await supabase.auth.signInWithPassword({ email, password })
     if (error) setError(error.message)
-    else navigate('/staff/shipments/new')
+    else navigate('/staff/shipments')
   }
 
   return (
