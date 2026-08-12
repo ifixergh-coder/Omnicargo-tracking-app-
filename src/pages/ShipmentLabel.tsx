@@ -19,6 +19,15 @@ type Shipment = {
   status: string
 }
 
+function OmniCargoLogo() {
+  return (
+    <svg width="40" height="40" viewBox="0 0 40 40" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="17" fill="none" stroke="white" strokeWidth="4" strokeDasharray="80 100" strokeLinecap="round" transform="rotate(-45 20 20)" />
+      <circle cx="20" cy="20" r="6" fill="#F5821F" />
+    </svg>
+  )
+}
+
 export default function ShipmentLabel() {
   const { id } = useParams()
   const [shipment, setShipment] = useState<Shipment | null>(null)
@@ -52,12 +61,9 @@ export default function ShipmentLabel() {
       </div>
 
       <div className="max-w-md mx-auto bg-white border-2 border-navy rounded-lg overflow-hidden print:border print:rounded-none">
-        <div className="bg-navy text-white px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange" />
-            <span className="font-bold">OmniCargo</span>
-          </div>
-          <span className="text-xs">STANDARD DELIVERY</span>
+        <div className="bg-navy px-4 py-3 flex items-center justify-between">
+          <OmniCargoLogo />
+          <span className="text-xs text-white">STANDARD DELIVERY</span>
         </div>
 
         <div className="px-4 py-3 border-b border-gray-300">
