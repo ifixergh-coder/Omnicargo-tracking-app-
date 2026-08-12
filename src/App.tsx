@@ -7,6 +7,7 @@ import StaffShipments from './pages/StaffShipments'
 import NewShipment from './pages/NewShipment'
 import ShipmentLabel from './pages/ShipmentLabel'
 import ShipmentInvoice from './pages/ShipmentInvoice'
+import StaffScan from './pages/StaffScan'
 import ProtectedRoute from './components/ProtectedRoute'
 
 export default function App() {
@@ -22,6 +23,8 @@ export default function App() {
         <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
         <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
         <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
+        <Route path="/staff/scan" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
+        <Route path="/staff/scan/:trackingNumber" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
       </Routes>
     </BrowserRouter>
   )
