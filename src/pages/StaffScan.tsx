@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
 import { supabase } from '../lib/supabase'
 
@@ -35,38 +35,45 @@ const STATUS_LABELS: Record<string, string> = {
 
 export default function StaffScan() {
   const { trackingNumber } = useParams()
-  const navigate = useNavigate()
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const [shipment, setShipment] = useState<Shipment | null>(null)
   const [loading, setLoading] = useState(false)
   const [notFound, setNotFound] = useState(false)
+  const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
+  const [savedMessage, setSavedMessage] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
 
-  // Load shipment if a tracking number is already in the URL (came from a QR link)
   useEffect(() => {
     if (!trackingNumber) return
     setLoading(true)
     setNotFound(false)
+    setSavedMessage(null)
     supabase.from('shipments').select('*').eq('tracking_number', trackingNumber).maybeSingle()
       .then(({ data }) => {
-        if (data) setShipment(data as Shipment)
-        else setNotFound(true)
+        if (data) {
+          setShipment(data as Shipment)
+          setSelectedStatus((data as Shipment).status)
+        } else {
+          setNotFound(true)
+        }
         setLoading(false)
       })
   }, [trackingNumber])
 
-  // Start camera scanner only if no tracking number is present yet
   useEffect(() => {
     if (trackingNumber) return
     const elementId = 'staff-qr-reader'
     const scanner = new Html5Qrcode(elementId)
     scannerRef.current = scanner
+    let handled = false
 
     scanner.start(
       { facingMode: 'environment' },
       { fps: 10, qrbox: { width: 250, height: 250 } },
-      (decodedText) => {
+      async (decodedText) => {
+        if (handled) return
+        handled = true
         let extracted = decodedText
         try {
           const url = new URL(decodedText)
@@ -75,8 +82,15 @@ export default function StaffScan() {
         } catch {
           // not a URL, use raw text as-is
         }
-        scanner.stop().catch(() => {})
-        navigate(`/staff/scan/${extracted}`)
+        try {
+          await scanner.stop()
+          await scanner.clear()
+        } catch {
+          // camera may already be stopped; safe to ignore
+        }
+        // Full page navigation avoids a blank screen caused by the
+        // camera video element not handing off cleanly to the next page
+        window.location.href = `/staff/scan/${extracted}`
       },
       () => { /* ignore per-frame scan misses */ },
     ).catch((err) => setScanError(String(err)))
@@ -84,15 +98,18 @@ export default function StaffScan() {
     return () => {
       scanner.stop().catch(() => {})
     }
-  }, [trackingNumber, navigate])
+  }, [trackingNumber])
 
-  async function updateStatus(newStatus: string) {
-    if (!shipment) return
+  async function confirmStatusUpdate() {
+    if (!shipment || !selectedStatus) return
     setUpdating(true)
-    await supabase.from('shipments').update({ status: newStatus }).eq('id', shipment.id)
-    await supabase.from('status_events').insert({ shipment_id: shipment.id, status: newStatus })
-    setShipment({ ...shipment, status: newStatus })
+    setSavedMessage(null)
+    await supabase.from('shipments').update({ status: selectedStatus }).eq('id', shipment.id)
+    await supabase.from('status_events').insert({ shipment_id: shipment.id, status: selectedStatus })
+    setShipment({ ...shipment, status: selectedStatus })
     setUpdating(false)
+    setSavedMessage(`Status updated to "${STATUS_LABELS[selectedStatus]}"`)
+    setTimeout(() => setSavedMessage(null), 4000)
   }
 
   if (trackingNumber) {
@@ -106,6 +123,8 @@ export default function StaffScan() {
       )
     }
     if (!shipment) return null
+
+    const hasChange = selectedStatus !== shipment.status
 
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-8">
@@ -142,21 +161,35 @@ export default function StaffScan() {
             </div>
 
             <div className="border-t pt-4">
-              <p className="text-xs font-semibold text-slate uppercase mb-2">Update status</p>
-              <div className="grid grid-cols-2 gap-2">
+              <p className="text-xs font-semibold text-slate uppercase mb-2">
+                Current status: <span className="text-navy">{STATUS_LABELS[shipment.status]}</span>
+              </p>
+              <p className="text-xs text-slate mb-2">Select a new status, then confirm below</p>
+              <div className="grid grid-cols-2 gap-2 mb-4">
                 {STATUS_OPTIONS.map((s) => (
                   <button
                     key={s}
-                    onClick={() => updateStatus(s)}
-                    disabled={updating}
+                    onClick={() => setSelectedStatus(s)}
                     className={`text-sm py-2 rounded-md border ${
-                      shipment.status === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'
+                      selectedStatus === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'
                     }`}
                   >
                     {STATUS_LABELS[s]}
                   </button>
                 ))}
               </div>
+
+              <button
+                onClick={confirmStatusUpdate}
+                disabled={!hasChange || updating}
+                className="w-full bg-navy text-white font-medium py-3 rounded-md disabled:opacity-40"
+              >
+                {updating ? 'Saving…' : hasChange ? `Confirm: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
+              </button>
+
+              {savedMessage && (
+                <p className="text-sm text-green-600 text-center mt-3 font-medium">✓ {savedMessage}</p>
+              )}
             </div>
           </div>
         </div>
