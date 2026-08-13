@@ -12,6 +12,7 @@ type Shipment = {
   status: string
   total_charge: number | null
   assigned_vehicle_id: string | null
+  batch_id: string | null
   created_at: string
 }
 
@@ -32,7 +33,7 @@ export default function StaffShipments() {
     setLoading(true)
     let query = supabase
       .from('shipments')
-      .select('id, tracking_number, sender_name, recipient_name, status, total_charge, assigned_vehicle_id, created_at')
+      .select('id, tracking_number, sender_name, recipient_name, status, total_charge, assigned_vehicle_id, batch_id, created_at')
       .order('created_at', { ascending: false })
 
     if (!showAll) {
@@ -77,7 +78,10 @@ export default function StaffShipments() {
                 <div>
                   <p className="font-mono font-medium text-navy">{s.tracking_number}</p>
                   <p className="text-sm text-slate">{s.sender_name} → {s.recipient_name}</p>
-                  <p className="text-xs text-slate mt-1">{STATUS_LABELS[s.status] ?? s.status} · {new Date(s.created_at).toLocaleString()}</p>
+                  <p className="text-xs text-slate mt-1">
+                    {STATUS_LABELS[s.status] ?? s.status} · {new Date(s.created_at).toLocaleString()}
+                    {s.batch_id && <span className="ml-1">· <Link to={`/staff/batches/${s.batch_id}`} className="text-orange underline">In batch</Link></span>}
+                  </p>
                 </div>
                 <div className="flex flex-col items-end gap-1 text-sm shrink-0">
                   {s.total_charge != null && <p className="font-semibold text-navy">GHS {s.total_charge.toFixed(2)}</p>}
