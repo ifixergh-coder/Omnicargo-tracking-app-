@@ -1,45 +1,64 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
-import Home from './pages/Home'
-import TrackPage from './pages/TrackPage'
-import DriverPage from './pages/DriverPage'
-import DriverSignup from './pages/DriverSignup'
-import DriverLogin from './pages/DriverLogin'
-import StaffLogin from './pages/StaffLogin'
-import StaffShipments from './pages/StaffShipments'
-import StaffVehicles from './pages/StaffVehicles'
-import StaffBatches from './pages/StaffBatches'
-import BatchDetail from './pages/BatchDetail'
-import BatchWaybill from './pages/BatchWaybill'
-import DailyWaybill from './pages/DailyWaybill'
-import NewShipment from './pages/NewShipment'
-import ShipmentLabel from './pages/ShipmentLabel'
-import ShipmentInvoice from './pages/ShipmentInvoice'
-import StaffScan from './pages/StaffScan'
 import ProtectedRoute from './components/ProtectedRoute'
+
+const Home = lazy(() => import('./pages/Home'))
+const TrackPage = lazy(() => import('./pages/TrackPage'))
+const DriverPage = lazy(() => import('./pages/DriverPage'))
+const DriverSignup = lazy(() => import('./pages/DriverSignup'))
+const DriverLogin = lazy(() => import('./pages/DriverLogin'))
+const StaffLogin = lazy(() => import('./pages/StaffLogin'))
+const StaffShipments = lazy(() => import('./pages/StaffShipments'))
+const StaffVehicles = lazy(() => import('./pages/StaffVehicles'))
+const StaffBatches = lazy(() => import('./pages/StaffBatches'))
+const BatchDetail = lazy(() => import('./pages/BatchDetail'))
+const BatchWaybill = lazy(() => import('./pages/BatchWaybill'))
+const DailyWaybill = lazy(() => import('./pages/DailyWaybill'))
+const NewShipment = lazy(() => import('./pages/NewShipment'))
+const ShipmentLabel = lazy(() => import('./pages/ShipmentLabel'))
+const ShipmentInvoice = lazy(() => import('./pages/ShipmentInvoice'))
+const StaffScan = lazy(() => import('./pages/StaffScan'))
+const StaffCustomers = lazy(() => import('./pages/StaffCustomers'))
+const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
+
+function PageLoading() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+      <div className="flex items-center gap-2 text-slate">
+        <span className="w-2 h-2 rounded-full bg-orange animate-pulse" />
+        <span className="text-sm">Loading…</span>
+      </div>
+    </div>
+  )
+}
 
 export default function App() {
   return (
     <BrowserRouter>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/track" element={<TrackPage />} />
-        <Route path="/track/:trackingNumber" element={<TrackPage />} />
-        <Route path="/driver" element={<ProtectedRoute><DriverPage /></ProtectedRoute>} />
-        <Route path="/driver/signup" element={<DriverSignup />} />
-        <Route path="/driver/login" element={<DriverLogin />} />
-        <Route path="/staff/login" element={<StaffLogin />} />
-        <Route path="/staff/shipments" element={<ProtectedRoute><StaffShipments /></ProtectedRoute>} />
-        <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
-        <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
-        <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
-        <Route path="/staff/vehicles" element={<ProtectedRoute><StaffVehicles /></ProtectedRoute>} />
-        <Route path="/staff/batches" element={<ProtectedRoute><StaffBatches /></ProtectedRoute>} />
-        <Route path="/staff/batches/:id" element={<ProtectedRoute><BatchDetail /></ProtectedRoute>} />
-        <Route path="/staff/batches/:id/waybill" element={<ProtectedRoute><BatchWaybill /></ProtectedRoute>} />
-        <Route path="/staff/waybill/daily" element={<ProtectedRoute><DailyWaybill /></ProtectedRoute>} />
-        <Route path="/staff/scan" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
-        <Route path="/staff/scan/:trackingNumber" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
-      </Routes>
+      <Suspense fallback={<PageLoading />}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/track" element={<TrackPage />} />
+          <Route path="/track/:trackingNumber" element={<TrackPage />} />
+          <Route path="/driver" element={<ProtectedRoute><DriverPage /></ProtectedRoute>} />
+          <Route path="/driver/signup" element={<DriverSignup />} />
+          <Route path="/driver/login" element={<DriverLogin />} />
+          <Route path="/staff/login" element={<StaffLogin />} />
+          <Route path="/staff/shipments" element={<ProtectedRoute><StaffShipments /></ProtectedRoute>} />
+          <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
+          <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
+          <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
+          <Route path="/staff/vehicles" element={<ProtectedRoute><StaffVehicles /></ProtectedRoute>} />
+          <Route path="/staff/batches" element={<ProtectedRoute><StaffBatches /></ProtectedRoute>} />
+          <Route path="/staff/batches/:id" element={<ProtectedRoute><BatchDetail /></ProtectedRoute>} />
+          <Route path="/staff/batches/:id/waybill" element={<ProtectedRoute><BatchWaybill /></ProtectedRoute>} />
+          <Route path="/staff/waybill/daily" element={<ProtectedRoute><DailyWaybill /></ProtectedRoute>} />
+          <Route path="/staff/scan" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
+          <Route path="/staff/scan/:trackingNumber" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
+          <Route path="/staff/customers" element={<ProtectedRoute><StaffCustomers /></ProtectedRoute>} />
+          <Route path="/staff/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
+        </Routes>
+      </Suspense>
     </BrowserRouter>
   )
 }
