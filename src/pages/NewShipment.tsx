@@ -19,6 +19,7 @@ export default function NewShipment() {
   const [widthCm, setWidthCm] = useState('')
   const [heightCm, setHeightCm] = useState('')
   const [weightKg, setWeightKg] = useState('')
+  const [boxCount, setBoxCount] = useState('1')
   const [pricePerCbm, setPricePerCbm] = useState('')
   const [includedKgPerCbm, setIncludedKgPerCbm] = useState('100')
   const [extraKgRate, setExtraKgRate] = useState('')
@@ -57,6 +58,7 @@ export default function NewShipment() {
       destination_address: destinationAddress || null, destination_gps: destinationGps || null,
       weight_kg: parseFloat(weightKg) || null, length_cm: parseFloat(lengthCm) || null,
       width_cm: parseFloat(widthCm) || null, height_cm: parseFloat(heightCm) || null,
+      box_count: parseInt(boxCount) || 1,
       cbm: cbm || null, price_per_cbm: parseFloat(pricePerCbm) || null,
       included_kg_per_cbm: parseFloat(includedKgPerCbm) || null, extra_kg_rate: parseFloat(extraKgRate) || null,
       total_charge: pricing.total || null, status: 'pending',
@@ -117,6 +119,14 @@ export default function NewShipment() {
             </div>
             <p className="text-sm text-slate mb-3">CBM: <span className="font-semibold text-navy">{cbm.toFixed(4)} m³</span></p>
             <input placeholder="Weight (kg)" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+          </section>
+
+          <section className="bg-white rounded-lg p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Number of boxes</h2>
+            <input type="number" min="1" placeholder="1" value={boxCount} onChange={e => setBoxCount(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <p className="text-xs text-slate mt-1">
+              Multiple boxes for this shipment print as separate numbered labels (e.g. 1/{boxCount || 1}, 2/{boxCount || 1}).
+            </p>
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
