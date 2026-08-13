@@ -20,6 +20,14 @@ type Shipment = {
   status: string
 }
 
+type DeliveryProof = {
+  id: number
+  photo_path: string
+  delivery_type: string
+  recipient_note: string | null
+  created_at: string
+}
+
 export default function StaffScan() {
   const { trackingNumber } = useParams()
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -31,6 +39,13 @@ export default function StaffScan() {
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
+  const [manualEntry, setManualEntry] = useState('')
+
+  const [deliveryType, setDeliveryType] = useState<'handed_to_person' | 'left_at_location'>('handed_to_person')
+  const [proofPhoto, setProofPhoto] = useState<File | null>(null)
+  const [proofNote, setProofNote] = useState('')
+  const [existingProof, setExistingProof] = useState<DeliveryProof | null>(null)
+  const [existingProofUrl, setExistingProofUrl] = useState<string | null>(null)
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setCurrentUserEmail(data.user?.email ?? null))
@@ -41,11 +56,22 @@ export default function StaffScan() {
     setLoading(true)
     setNotFound(false)
     setSavedMessage(null)
+    setExistingProof(null)
+    setExistingProofUrl(null)
     supabase.from('shipments').select('*').eq('tracking_number', trackingNumber).maybeSingle()
-      .then(({ data }) => {
+      .then(async ({ data }) => {
         if (data) {
-          setShipment(data as Shipment)
-          setSelectedStatus((data as Shipment).status)
+          const s = data as Shipment
+          setShipment(s)
+          setSelectedStatus(s.status)
+          const { data: proof } = await supabase.from('delivery_proofs').select('*').eq('shipment_id', s.id)
+            .order('created_at', { ascending: false }).limit(1).maybeSingle()
+          if (proof) {
+            setExistingProof(proof as DeliveryProof)
+            const { data: signed } = await supabase.storage.from('delivery-proofs')
+              .createSignedUrl((proof as DeliveryProof).photo_path, 3600)
+            if (signed) setExistingProofUrl(signed.signedUrl)
+          }
         } else {
           setNotFound(true)
         }
@@ -71,9 +97,7 @@ export default function StaffScan() {
           const url = new URL(decodedText)
           const parts = url.pathname.split('/')
           extracted = parts[parts.length - 1]
-        } catch {
-          // not a URL, use raw text
-        }
+        } catch {}
         try { await scanner.stop(); await scanner.clear() } catch {}
         window.location.href = `/staff/scan/${extracted}`
       },
@@ -83,19 +107,46 @@ export default function StaffScan() {
     return () => { scanner.stop().catch(() => {}) }
   }, [trackingNumber])
 
+  function handleManualLookup(e: React.FormEvent) {
+    e.preventDefault()
+    if (manualEntry.trim()) window.location.href = `/staff/scan/${manualEntry.trim()}`
+  }
+
   async function confirmStatusUpdate() {
     if (!shipment || !selectedStatus) return
+
+    if (selectedStatus === 'delivered' && !proofPhoto) {
+      setSavedMessage(null)
+      alert('A photo is required to mark this as delivered.')
+      return
+    }
+
     setUpdating(true)
     setSavedMessage(null)
+
+    if (selectedStatus === 'delivered' && proofPhoto) {
+      const path = `${shipment.id}/${Date.now()}.jpg`
+      const { error: uploadError } = await supabase.storage.from('delivery-proofs').upload(path, proofPhoto)
+      if (uploadError) {
+        setUpdating(false)
+        alert(`Photo upload failed: ${uploadError.message}`)
+        return
+      }
+      await supabase.from('delivery_proofs').insert({
+        shipment_id: shipment.id,
+        photo_path: path,
+        delivery_type: deliveryType,
+        recipient_note: proofNote || null,
+        taken_by_email: currentUserEmail,
+      })
+    }
+
     await supabase.from('shipments').update({ status: selectedStatus }).eq('id', shipment.id)
-    await supabase.from('status_events').insert({
-      shipment_id: shipment.id,
-      status: selectedStatus,
-      updated_by_email: currentUserEmail,
-    })
+    await supabase.from('status_events').insert({ shipment_id: shipment.id, status: selectedStatus, updated_by_email: currentUserEmail })
     setShipment({ ...shipment, status: selectedStatus })
     setUpdating(false)
     setSavedMessage(`Status updated to "${STATUS_LABELS[selectedStatus]}"`)
+    setProofPhoto(null)
     setTimeout(() => setSavedMessage(null), 4000)
   }
 
@@ -112,6 +163,7 @@ export default function StaffScan() {
     if (!shipment) return null
 
     const hasChange = selectedStatus !== shipment.status
+    const needsPhoto = selectedStatus === 'delivered' && hasChange
 
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-8">
@@ -144,6 +196,17 @@ export default function StaffScan() {
               <p>CBM: <span className="font-semibold">{shipment.cbm?.toFixed(3) ?? '—'} m³</span></p>
             </div>
 
+            {existingProof && existingProofUrl && (
+              <div className="border-t pt-3 mb-3">
+                <p className="text-xs font-semibold text-slate uppercase mb-2">Delivery proof on file</p>
+                <img src={existingProofUrl} alt="Delivery proof" className="w-full rounded-md border" />
+                <p className="text-xs text-slate mt-1">
+                  {existingProof.delivery_type === 'handed_to_person' ? 'Handed to person' : 'Left at location'}
+                  {existingProof.recipient_note && ` — ${existingProof.recipient_note}`}
+                </p>
+              </div>
+            )}
+
             <div className="border-t pt-4">
               <p className="text-xs font-semibold text-slate uppercase mb-2">
                 Current status: <span className="text-navy">{STATUS_LABELS[shipment.status]}</span>
@@ -162,6 +225,24 @@ export default function StaffScan() {
                   </button>
                 ))}
               </div>
+
+              {needsPhoto && (
+                <div className="bg-gray-50 rounded-md p-3 mb-4 space-y-2">
+                  <p className="text-xs font-semibold text-slate uppercase">Delivery proof (required)</p>
+                  <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value as any)} className="w-full border rounded-md px-3 py-2 text-sm">
+                    <option value="handed_to_person">Handed to person</option>
+                    <option value="left_at_location">Left at location</option>
+                  </select>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => setProofPhoto(e.target.files?.[0] ?? null)}
+                    className="w-full text-sm"
+                  />
+                  <input placeholder="Note (optional)" value={proofNote} onChange={(e) => setProofNote(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" />
+                </div>
+              )}
 
               <button
                 onClick={confirmStatusUpdate}
@@ -184,6 +265,19 @@ export default function StaffScan() {
       <p className="text-white text-center mb-4">Point the camera at a shipment label's QR code</p>
       <div id="staff-qr-reader" className="max-w-sm mx-auto rounded-lg overflow-hidden" />
       {scanError && <p className="text-red-300 text-sm text-center mt-4">{scanError}</p>}
+
+      <div className="max-w-sm mx-auto mt-6 border-t border-white/20 pt-6">
+        <p className="text-white/70 text-sm mb-2">Or type the tracking number</p>
+        <form onSubmit={handleManualLookup} className="flex gap-2">
+          <input
+            placeholder="OMC4827193650182"
+            value={manualEntry}
+            onChange={(e) => setManualEntry(e.target.value)}
+            className="flex-1 rounded-md px-3 py-2 text-navy"
+          />
+          <button type="submit" className="bg-orange text-white px-4 py-2 rounded-md text-sm">Look up</button>
+        </form>
+      </div>
     </div>
   )
 }
