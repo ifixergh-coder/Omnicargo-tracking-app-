@@ -27,7 +27,9 @@ const ORANGE: [number, number, number] = [245, 130, 31]
 const SLATE: [number, number, number] = [61, 74, 92]
 const GRAY: [number, number, number] = [200, 200, 200]
 
-function loadImageDataUrl(url: string): Promise<string> {
+type LoadedImage = { dataUrl: string; width: number; height: number }
+
+function loadImage(url: string): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image()
     img.crossOrigin = 'anonymous'
@@ -38,11 +40,17 @@ function loadImageDataUrl(url: string): Promise<string> {
       const ctx = canvas.getContext('2d')
       if (!ctx) return reject('no canvas context')
       ctx.drawImage(img, 0, 0)
-      resolve(canvas.toDataURL('image/png'))
+      resolve({ dataUrl: canvas.toDataURL('image/png'), width: img.width, height: img.height })
     }
     img.onerror = reject
     img.src = url
   })
+}
+
+// Fits an image inside a max box without distorting its proportions
+function fitWithinBox(imgWidth: number, imgHeight: number, maxWidth: number, maxHeight: number) {
+  const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight)
+  return { width: imgWidth * ratio, height: imgHeight * ratio }
 }
 
 function generateBarcodeDataUrl(value: string): string {
@@ -57,14 +65,17 @@ function drawLabelPage(
   boxNumber: number,
   boxCount: number,
   printedAt: string,
-  logoDataUrl: string,
+  logo: LoadedImage,
   qrDataUrl: string,
 ) {
   doc.setDrawColor(...NAVY)
   doc.setLineWidth(0.5)
   doc.rect(2, 2, 96, 146)
 
-  doc.addImage(logoDataUrl, 'PNG', 5, 5, 20, 8)
+  // Logo scaled to fit an 24×10mm box, keeping its real proportions
+  const logoBox = fitWithinBox(logo.width, logo.height, 24, 10)
+  doc.addImage(logo.dataUrl, 'PNG', 5, 5, logoBox.width, logoBox.height)
+
   doc.setFontSize(7)
   doc.setTextColor(...NAVY)
   doc.text('STANDARD DELIVERY', 95, 9, { align: 'right' })
@@ -141,7 +152,7 @@ function drawLabelPage(
 }
 
 async function buildLabelPdf(shipment: Shipment, printedAt: string): Promise<jsPDF> {
-  const logoDataUrl = await loadImageDataUrl('/omnicargo-logo.png')
+  const logo = await loadImage('/omnicargo-logo.png')
   const qrValue = `${window.location.origin}/staff/scan/${shipment.tracking_number}`
   const qrDataUrl = await QRCode.toDataURL(qrValue, { width: 300, margin: 1 })
 
@@ -150,7 +161,7 @@ async function buildLabelPdf(shipment: Shipment, printedAt: string): Promise<jsP
 
   for (let i = 1; i <= boxCount; i++) {
     if (i > 1) doc.addPage([100, 150], 'portrait')
-    drawLabelPage(doc, shipment, i, boxCount, printedAt, logoDataUrl, qrDataUrl)
+    drawLabelPage(doc, shipment, i, boxCount, printedAt, logo, qrDataUrl)
   }
   return doc
 }
@@ -169,7 +180,7 @@ function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipme
   return (
     <div className="w-[280px] mx-auto bg-white border-2 border-navy overflow-hidden flex flex-col mb-6" style={{ aspectRatio: '100 / 150' }}>
       <div className="px-3 py-2 flex items-center justify-between border-b-2 border-navy shrink-0">
-        <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6" />
+        <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6 w-auto object-contain" />
         <span className="text-[10px] font-semibold text-navy">STANDARD DELIVERY</span>
       </div>
       <div className="px-3 py-2 border-b border-gray-300 shrink-0">
