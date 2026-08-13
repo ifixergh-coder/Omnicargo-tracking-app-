@@ -27,13 +27,14 @@ function playScanFeedback() {
     const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
     const osc = ctx.createOscillator()
     const gain = ctx.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = 880
-    gain.gain.value = 0.15
+    osc.type = 'square'
+    osc.frequency.value = 2700
+    gain.gain.setValueAtTime(0.12, ctx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.08)
     osc.connect(gain)
     gain.connect(ctx.destination)
     osc.start()
-    osc.stop(ctx.currentTime + 0.12)
+    osc.stop(ctx.currentTime + 0.08)
   } catch {
     // audio not supported, ignore
   }
@@ -112,7 +113,9 @@ export default function StaffScan() {
           const url = new URL(decodedText)
           const parts = url.pathname.split('/')
           extracted = parts[parts.length - 1]
-        } catch {}
+        } catch {
+          // not a URL, use raw text
+        }
         try { await scanner.stop(); await scanner.clear() } catch {}
         // Full page navigation here (not client-side) — the camera video
         // element doesn't hand off cleanly to the next page otherwise
