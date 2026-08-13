@@ -2,6 +2,8 @@ import { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { generateTrackingNumber } from '../lib/trackingNumber'
 import { calculateCbm, calculateCharge } from '../lib/pricing'
+import { findOrCreateCustomer } from '../lib/customers'
+import CustomerSearch from '../components/CustomerSearch'
 import StaffNav from '../components/StaffNav'
 
 type Vehicle = { id: string; label: string }
@@ -51,6 +53,11 @@ export default function NewShipment() {
     setError(null)
     const trackingNumber = generateTrackingNumber()
 
+    const [senderCustomerId, recipientCustomerId] = await Promise.all([
+      findOrCreateCustomer(senderName, senderPhone, senderEmail),
+      findOrCreateCustomer(recipientName, recipientPhone, recipientEmail),
+    ])
+
     const { data: inserted, error } = await supabase.from('shipments').insert({
       tracking_number: trackingNumber,
       sender_name: senderName, sender_phone: senderPhone || null, sender_email: senderEmail || null,
@@ -63,6 +70,7 @@ export default function NewShipment() {
       included_kg_per_cbm: parseFloat(includedKgPerCbm) || null, extra_kg_rate: parseFloat(extraKgRate) || null,
       total_charge: pricing.total || null, status: 'pending',
       assigned_vehicle_id: assignedVehicleId || null,
+      sender_customer_id: senderCustomerId, recipient_customer_id: recipientCustomerId,
     }).select()
 
     if (error) { setError(error.message); setSaving(false) }
@@ -96,6 +104,7 @@ export default function NewShipment() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Sender</h2>
+            <CustomerSearch label="Sender" onSelect={(c) => { setSenderName(c.name); setSenderPhone(c.phone ?? ''); setSenderEmail(c.email ?? '') }} />
             <input placeholder="Sender name" value={senderName} onChange={e => setSenderName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Sender phone" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Sender email" value={senderEmail} onChange={e => setSenderEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
@@ -103,6 +112,7 @@ export default function NewShipment() {
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Recipient</h2>
+            <CustomerSearch label="Recipient" onSelect={(c) => { setRecipientName(c.name); setRecipientPhone(c.phone ?? ''); setRecipientEmail(c.email ?? '') }} />
             <input placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Recipient email" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
