@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
 import { supabase } from '../lib/supabase'
 import { STATUS_OPTIONS, STATUS_LABELS } from '../lib/statusLabels'
@@ -20,16 +20,31 @@ type Shipment = {
   status: string
 }
 
-type DeliveryProof = {
-  id: number
-  photo_path: string
-  delivery_type: string
-  recipient_note: string | null
-  created_at: string
+type DeliveryProof = { id: number; photo_path: string; delivery_type: string; recipient_note: string | null; created_at: string }
+
+function playScanFeedback() {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+    osc.type = 'sine'
+    osc.frequency.value = 880
+    gain.gain.value = 0.15
+    osc.connect(gain)
+    gain.connect(ctx.destination)
+    osc.start()
+    osc.stop(ctx.currentTime + 0.12)
+  } catch {
+    // audio not supported, ignore
+  }
+  if ('vibrate' in navigator) {
+    navigator.vibrate(80) // no effect on iOS Safari, which doesn't support this API
+  }
 }
 
 export default function StaffScan() {
   const { trackingNumber } = useParams()
+  const navigate = useNavigate()
   const scannerRef = useRef<Html5Qrcode | null>(null)
   const [shipment, setShipment] = useState<Shipment | null>(null)
   const [loading, setLoading] = useState(false)
@@ -68,8 +83,7 @@ export default function StaffScan() {
             .order('created_at', { ascending: false }).limit(1).maybeSingle()
           if (proof) {
             setExistingProof(proof as DeliveryProof)
-            const { data: signed } = await supabase.storage.from('delivery-proofs')
-              .createSignedUrl((proof as DeliveryProof).photo_path, 3600)
+            const { data: signed } = await supabase.storage.from('delivery-proofs').createSignedUrl((proof as DeliveryProof).photo_path, 3600)
             if (signed) setExistingProofUrl(signed.signedUrl)
           }
         } else {
@@ -92,6 +106,7 @@ export default function StaffScan() {
       async (decodedText) => {
         if (handled) return
         handled = true
+        playScanFeedback()
         let extracted = decodedText
         try {
           const url = new URL(decodedText)
@@ -99,6 +114,8 @@ export default function StaffScan() {
           extracted = parts[parts.length - 1]
         } catch {}
         try { await scanner.stop(); await scanner.clear() } catch {}
+        // Full page navigation here (not client-side) — the camera video
+        // element doesn't hand off cleanly to the next page otherwise
         window.location.href = `/staff/scan/${extracted}`
       },
       () => {},
@@ -109,14 +126,13 @@ export default function StaffScan() {
 
   function handleManualLookup(e: React.FormEvent) {
     e.preventDefault()
-    if (manualEntry.trim()) window.location.href = `/staff/scan/${manualEntry.trim()}`
+    if (manualEntry.trim()) navigate(`/staff/scan/${manualEntry.trim()}`)
   }
 
   async function confirmStatusUpdate() {
     if (!shipment || !selectedStatus) return
 
     if (selectedStatus === 'delivered' && !proofPhoto) {
-      setSavedMessage(null)
       alert('A photo is required to mark this as delivered.')
       return
     }
@@ -133,11 +149,8 @@ export default function StaffScan() {
         return
       }
       await supabase.from('delivery_proofs').insert({
-        shipment_id: shipment.id,
-        photo_path: path,
-        delivery_type: deliveryType,
-        recipient_note: proofNote || null,
-        taken_by_email: currentUserEmail,
+        shipment_id: shipment.id, photo_path: path, delivery_type: deliveryType,
+        recipient_note: proofNote || null, taken_by_email: currentUserEmail,
       })
     }
 
@@ -156,7 +169,7 @@ export default function StaffScan() {
       return (
         <div className="min-h-screen flex flex-col items-center justify-center gap-4 px-6 text-center">
           <p className="text-navy font-medium">No shipment found for that code.</p>
-          <a href="/staff/scan" className="text-orange underline">Scan again</a>
+          <Link to="/staff/scan" className="text-orange underline">Scan again</Link>
         </div>
       )
     }
@@ -168,7 +181,7 @@ export default function StaffScan() {
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-8">
         <div className="max-w-md mx-auto">
-          <a href="/staff/scan" className="text-orange underline text-sm">← Scan another</a>
+          <Link to="/staff/scan" className="text-orange underline text-sm">← Scan another</Link>
           <div className="bg-white rounded-lg shadow-sm p-5 mt-4">
             <p className="font-mono font-bold text-lg text-navy mb-1">{shipment.tracking_number}</p>
             {currentUserEmail && <p className="text-xs text-slate mb-3">Logged in as {currentUserEmail}</p>}
@@ -214,13 +227,7 @@ export default function StaffScan() {
               <p className="text-xs text-slate mb-2">Select a new status, then confirm below</p>
               <div className="grid grid-cols-2 gap-2 mb-4">
                 {STATUS_OPTIONS.map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSelectedStatus(s)}
-                    className={`text-sm py-2 px-2 rounded-md border text-center leading-tight ${
-                      selectedStatus === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'
-                    }`}
-                  >
+                  <button key={s} onClick={() => setSelectedStatus(s)} className={`text-sm py-2 px-2 rounded-md border text-center leading-tight ${selectedStatus === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'}`}>
                     {STATUS_LABELS[s]}
                   </button>
                 ))}
@@ -233,22 +240,12 @@ export default function StaffScan() {
                     <option value="handed_to_person">Handed to person</option>
                     <option value="left_at_location">Left at location</option>
                   </select>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={(e) => setProofPhoto(e.target.files?.[0] ?? null)}
-                    className="w-full text-sm"
-                  />
+                  <input type="file" accept="image/*" capture="environment" onChange={(e) => setProofPhoto(e.target.files?.[0] ?? null)} className="w-full text-sm" />
                   <input placeholder="Note (optional)" value={proofNote} onChange={(e) => setProofNote(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" />
                 </div>
               )}
 
-              <button
-                onClick={confirmStatusUpdate}
-                disabled={!hasChange || updating}
-                className="w-full bg-navy text-white font-medium py-3 rounded-md disabled:opacity-40"
-              >
+              <button onClick={confirmStatusUpdate} disabled={!hasChange || updating} className="w-full bg-navy text-white font-medium py-3 rounded-md disabled:opacity-40">
                 {updating ? 'Saving…' : hasChange ? `Confirm: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
               </button>
 
@@ -269,12 +266,7 @@ export default function StaffScan() {
       <div className="max-w-sm mx-auto mt-6 border-t border-white/20 pt-6">
         <p className="text-white/70 text-sm mb-2">Or type the tracking number</p>
         <form onSubmit={handleManualLookup} className="flex gap-2">
-          <input
-            placeholder="OMC4827193650182"
-            value={manualEntry}
-            onChange={(e) => setManualEntry(e.target.value)}
-            className="flex-1 rounded-md px-3 py-2 text-navy"
-          />
+          <input placeholder="OMC4827193650182" value={manualEntry} onChange={(e) => setManualEntry(e.target.value)} className="flex-1 rounded-md px-3 py-2 text-navy" />
           <button type="submit" className="bg-orange text-white px-4 py-2 rounded-md text-sm">Look up</button>
         </form>
       </div>
