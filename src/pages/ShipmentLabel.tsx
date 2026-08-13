@@ -47,7 +47,6 @@ function loadImage(url: string): Promise<LoadedImage> {
   })
 }
 
-// Fits an image inside a max box without distorting its proportions
 function fitWithinBox(imgWidth: number, imgHeight: number, maxWidth: number, maxHeight: number) {
   const ratio = Math.min(maxWidth / imgWidth, maxHeight / imgHeight)
   return { width: imgWidth * ratio, height: imgHeight * ratio }
@@ -72,7 +71,6 @@ function drawLabelPage(
   doc.setLineWidth(0.5)
   doc.rect(2, 2, 96, 146)
 
-  // Logo scaled to fit an 24×10mm box, keeping its real proportions
   const logoBox = fitWithinBox(logo.width, logo.height, 24, 10)
   doc.addImage(logo.dataUrl, 'PNG', 5, 5, logoBox.width, logoBox.height)
 
@@ -166,7 +164,6 @@ async function buildLabelPdf(shipment: Shipment, printedAt: string): Promise<jsP
   return doc
 }
 
-// On-screen preview only — the printable output comes from buildLabelPdf above
 function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; boxNumber: number; printedAt: string }) {
   const barcodeRef = useRef<SVGSVGElement>(null)
   useEffect(() => {
@@ -251,11 +248,20 @@ export default function ShipmentLabel() {
   }
 
   async function handleOpenToPrint() {
+    // Open the tab immediately, synchronously, in direct response to the tap —
+    // Safari on iPad blocks window.open() as a popup if it happens after an
+    // await, since it no longer counts as a direct user-gesture response.
+    const newTab = window.open('', '_blank')
     setGenerating(true)
     try {
       const doc = await buildLabelPdf(shipment!, printedAt)
-      const blobUrl = doc.output('bloburl')
-      window.open(blobUrl as unknown as string, '_blank')
+      const blobUrl = doc.output('bloburl') as unknown as string
+      if (newTab) {
+        newTab.location.href = blobUrl
+      } else {
+        // Popup was blocked outright — fall back to download instead
+        doc.save(`${shipment!.tracking_number}-label.pdf`)
+      }
     } finally {
       setGenerating(false)
     }
