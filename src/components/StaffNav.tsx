@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Package, PlusCircle, Truck, ScanLine, LogOut, Boxes, ClipboardList } from 'lucide-react'
+import { Package, PlusCircle, Truck, ScanLine, LogOut, Boxes, ClipboardList, Users } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const LINKS = [
@@ -36,6 +36,10 @@ export default function StaffNav() {
               {label}
             </Link>
           ))}
+          <Link to="/staff/customers" className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-colors ${isActive('/staff/customers') ? 'bg-orange text-white shadow-sm' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}>
+            <Users size={16} />
+            Customers
+          </Link>
           <Link to="/staff/waybill/daily" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm text-white/70 hover:bg-white/10 hover:text-white">
             <ClipboardList size={16} />
             Daily list
@@ -50,6 +54,7 @@ export default function StaffNav() {
       <div className="flex md:hidden items-center justify-between bg-navy px-4 py-3 mb-4">
         <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6" />
         <div className="flex items-center gap-3">
+          <Link to="/staff/customers" className="text-white/60 text-xs">Customers</Link>
           <Link to="/staff/waybill/daily" className="text-white/60 text-xs">Daily list</Link>
           <button onClick={handleLogout} className="text-white/60 text-xs flex items-center gap-1">
             <LogOut size={14} />
