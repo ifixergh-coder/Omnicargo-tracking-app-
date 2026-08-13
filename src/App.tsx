@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import Home from './pages/Home'
 import TrackPage from './pages/TrackPage'
 import DriverPage from './pages/DriverPage'
+import DriverSignup from './pages/DriverSignup'
+import DriverLogin from './pages/DriverLogin'
 import StaffLogin from './pages/StaffLogin'
 import StaffShipments from './pages/StaffShipments'
 import StaffVehicles from './pages/StaffVehicles'
@@ -22,7 +24,9 @@ export default function App() {
         <Route path="/" element={<Home />} />
         <Route path="/track" element={<TrackPage />} />
         <Route path="/track/:trackingNumber" element={<TrackPage />} />
-        <Route path="/driver" element={<DriverPage />} />
+        <Route path="/driver" element={<ProtectedRoute><DriverPage /></ProtectedRoute>} />
+        <Route path="/driver/signup" element={<DriverSignup />} />
+        <Route path="/driver/login" element={<DriverLogin />} />
         <Route path="/staff/login" element={<StaffLogin />} />
         <Route path="/staff/shipments" element={<ProtectedRoute><StaffShipments /></ProtectedRoute>} />
         <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
