@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
 import { supabase } from '../lib/supabase'
+import { STATUS_OPTIONS, STATUS_LABELS } from '../lib/statusLabels'
 
 type Shipment = {
   id: string
@@ -19,20 +20,6 @@ type Shipment = {
   status: string
 }
 
-const STATUS_OPTIONS = [
-  'pending', 'picked_up', 'in_transit', 'out_for_delivery', 'delivered', 'failed', 'cancelled',
-]
-
-const STATUS_LABELS: Record<string, string> = {
-  pending: 'Pending pickup',
-  picked_up: 'Picked up',
-  in_transit: 'In transit',
-  out_for_delivery: 'Out for delivery',
-  delivered: 'Delivered',
-  failed: 'Delivery failed',
-  cancelled: 'Cancelled',
-}
-
 export default function StaffScan() {
   const { trackingNumber } = useParams()
   const scannerRef = useRef<Html5Qrcode | null>(null)
@@ -43,6 +30,11 @@ export default function StaffScan() {
   const [updating, setUpdating] = useState(false)
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
   const [scanError, setScanError] = useState<string | null>(null)
+  const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setCurrentUserEmail(data.user?.email ?? null))
+  }, [])
 
   useEffect(() => {
     if (!trackingNumber) return
@@ -80,24 +72,15 @@ export default function StaffScan() {
           const parts = url.pathname.split('/')
           extracted = parts[parts.length - 1]
         } catch {
-          // not a URL, use raw text as-is
+          // not a URL, use raw text
         }
-        try {
-          await scanner.stop()
-          await scanner.clear()
-        } catch {
-          // camera may already be stopped; safe to ignore
-        }
-        // Full page navigation avoids a blank screen caused by the
-        // camera video element not handing off cleanly to the next page
+        try { await scanner.stop(); await scanner.clear() } catch {}
         window.location.href = `/staff/scan/${extracted}`
       },
-      () => { /* ignore per-frame scan misses */ },
+      () => {},
     ).catch((err) => setScanError(String(err)))
 
-    return () => {
-      scanner.stop().catch(() => {})
-    }
+    return () => { scanner.stop().catch(() => {}) }
   }, [trackingNumber])
 
   async function confirmStatusUpdate() {
@@ -105,7 +88,11 @@ export default function StaffScan() {
     setUpdating(true)
     setSavedMessage(null)
     await supabase.from('shipments').update({ status: selectedStatus }).eq('id', shipment.id)
-    await supabase.from('status_events').insert({ shipment_id: shipment.id, status: selectedStatus })
+    await supabase.from('status_events').insert({
+      shipment_id: shipment.id,
+      status: selectedStatus,
+      updated_by_email: currentUserEmail,
+    })
     setShipment({ ...shipment, status: selectedStatus })
     setUpdating(false)
     setSavedMessage(`Status updated to "${STATUS_LABELS[selectedStatus]}"`)
@@ -131,7 +118,8 @@ export default function StaffScan() {
         <div className="max-w-md mx-auto">
           <a href="/staff/scan" className="text-orange underline text-sm">← Scan another</a>
           <div className="bg-white rounded-lg shadow-sm p-5 mt-4">
-            <p className="font-mono font-bold text-lg text-navy mb-3">{shipment.tracking_number}</p>
+            <p className="font-mono font-bold text-lg text-navy mb-1">{shipment.tracking_number}</p>
+            {currentUserEmail && <p className="text-xs text-slate mb-3">Logged in as {currentUserEmail}</p>}
 
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
@@ -148,12 +136,8 @@ export default function StaffScan() {
               </div>
             </div>
 
-            {shipment.destination_address && (
-              <p className="text-sm text-slate mb-1">Address: {shipment.destination_address}</p>
-            )}
-            {shipment.destination_gps && (
-              <p className="text-sm text-slate mb-3">GPS: {shipment.destination_gps}</p>
-            )}
+            {shipment.destination_address && <p className="text-sm text-slate mb-1">Address: {shipment.destination_address}</p>}
+            {shipment.destination_gps && <p className="text-sm text-slate mb-3">GPS: {shipment.destination_gps}</p>}
 
             <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
               <p>Weight: <span className="font-semibold">{shipment.weight_kg ?? '—'} kg</span></p>
@@ -170,7 +154,7 @@ export default function StaffScan() {
                   <button
                     key={s}
                     onClick={() => setSelectedStatus(s)}
-                    className={`text-sm py-2 rounded-md border ${
+                    className={`text-sm py-2 px-2 rounded-md border text-center leading-tight ${
                       selectedStatus === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'
                     }`}
                   >
@@ -187,9 +171,7 @@ export default function StaffScan() {
                 {updating ? 'Saving…' : hasChange ? `Confirm: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
               </button>
 
-              {savedMessage && (
-                <p className="text-sm text-green-600 text-center mt-3 font-medium">✓ {savedMessage}</p>
-              )}
+              {savedMessage && <p className="text-sm text-green-600 text-center mt-3 font-medium">✓ {savedMessage}</p>}
             </div>
           </div>
         </div>
