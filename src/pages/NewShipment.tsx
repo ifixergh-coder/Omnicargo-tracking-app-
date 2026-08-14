@@ -7,16 +7,24 @@ import CustomerSearch from '../components/CustomerSearch'
 import StaffNav from '../components/StaffNav'
 
 type Vehicle = { id: string; label: string }
+type Customer = { id: string; name: string; phone: string | null; email: string | null }
 
 export default function NewShipment() {
   const [senderName, setSenderName] = useState('')
   const [senderPhone, setSenderPhone] = useState('')
   const [senderEmail, setSenderEmail] = useState('')
+  const [selectedSender, setSelectedSender] = useState<Customer | null>(null)
+
   const [recipientName, setRecipientName] = useState('')
   const [recipientPhone, setRecipientPhone] = useState('')
   const [recipientEmail, setRecipientEmail] = useState('')
+  const [selectedRecipient, setSelectedRecipient] = useState<Customer | null>(null)
+
+  const [pickupLocation, setPickupLocation] = useState('')
   const [destinationAddress, setDestinationAddress] = useState('')
   const [destinationGps, setDestinationGps] = useState('')
+  const [packageDescription, setPackageDescription] = useState('')
+
   const [lengthCm, setLengthCm] = useState('')
   const [widthCm, setWidthCm] = useState('')
   const [heightCm, setHeightCm] = useState('')
@@ -54,15 +62,17 @@ export default function NewShipment() {
     const trackingNumber = generateTrackingNumber()
 
     const [senderCustomerId, recipientCustomerId] = await Promise.all([
-      findOrCreateCustomer(senderName, senderPhone, senderEmail),
-      findOrCreateCustomer(recipientName, recipientPhone, recipientEmail),
+      selectedSender ? Promise.resolve(selectedSender.id) : findOrCreateCustomer(senderName, senderPhone, senderEmail),
+      selectedRecipient ? Promise.resolve(selectedRecipient.id) : findOrCreateCustomer(recipientName, recipientPhone, recipientEmail),
     ])
 
     const { data: inserted, error } = await supabase.from('shipments').insert({
       tracking_number: trackingNumber,
       sender_name: senderName, sender_phone: senderPhone || null, sender_email: senderEmail || null,
       recipient_name: recipientName, recipient_phone: recipientPhone || null, recipient_email: recipientEmail || null,
+      pickup_location: pickupLocation || null,
       destination_address: destinationAddress || null, destination_gps: destinationGps || null,
+      package_description: packageDescription || null,
       weight_kg: parseFloat(weightKg) || null, length_cm: parseFloat(lengthCm) || null,
       width_cm: parseFloat(widthCm) || null, height_cm: parseFloat(heightCm) || null,
       box_count: parseInt(boxCount) || 1,
@@ -104,20 +114,30 @@ export default function NewShipment() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Sender</h2>
-            <CustomerSearch label="Sender" onSelect={(c) => { setSenderName(c.name); setSenderPhone(c.phone ?? ''); setSenderEmail(c.email ?? '') }} />
-            <input placeholder="Sender name" value={senderName} onChange={e => setSenderName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Sender phone" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Sender email" value={senderEmail} onChange={e => setSenderEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <CustomerSearch
+              label="Sender"
+              name={senderName} phone={senderPhone} email={senderEmail}
+              onChangeName={setSenderName} onChangePhone={setSenderPhone} onChangeEmail={setSenderEmail}
+              selectedCustomer={selectedSender} onSelectCustomer={setSelectedSender}
+            />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Recipient</h2>
-            <CustomerSearch label="Recipient" onSelect={(c) => { setRecipientName(c.name); setRecipientPhone(c.phone ?? ''); setRecipientEmail(c.email ?? '') }} />
-            <input placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Recipient email" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <CustomerSearch
+              label="Recipient"
+              name={recipientName} phone={recipientPhone} email={recipientEmail}
+              onChangeName={setRecipientName} onChangePhone={setRecipientPhone} onChangeEmail={setRecipientEmail}
+              selectedCustomer={selectedRecipient} onSelectCustomer={setSelectedRecipient}
+            />
+          </section>
+
+          <section className="bg-white rounded-lg p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Route & package</h2>
+            <input placeholder="Pickup location" value={pickupLocation} onChange={e => setPickupLocation(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Delivery address" value={destinationAddress} onChange={e => setDestinationAddress(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="GhanaPostGPS (optional)" value={destinationGps} onChange={e => setDestinationGps(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <input placeholder="GhanaPostGPS (optional)" value={destinationGps} onChange={e => setDestinationGps(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <input placeholder="Package description (e.g. Documents, Electronics)" value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
