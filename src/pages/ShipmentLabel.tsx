@@ -225,6 +225,7 @@ export default function ShipmentLabel() {
   const [shipment, setShipment] = useState<Shipment | null>(null)
   const [printedAt] = useState(() => new Date().toLocaleString())
   const [generating, setGenerating] = useState(false)
+  const printFrameRef = useRef<HTMLIFrameElement>(null)
 
   useEffect(() => {
     if (!id) return
@@ -247,21 +248,24 @@ export default function ShipmentLabel() {
     }
   }
 
-  async function handleOpenToPrint() {
-    // Open the tab immediately, synchronously, in direct response to the tap —
-    // Safari on iPad blocks window.open() as a popup if it happens after an
-    // await, since it no longer counts as a direct user-gesture response.
-    const newTab = window.open('', '_blank')
+  async function handlePrintDirectly() {
     setGenerating(true)
     try {
       const doc = await buildLabelPdf(shipment!, printedAt)
       const blobUrl = doc.output('bloburl') as unknown as string
-      if (newTab) {
-        newTab.location.href = blobUrl
-      } else {
-        // Popup was blocked outright — fall back to download instead
-        doc.save(`${shipment!.tracking_number}-label.pdf`)
+      const frame = printFrameRef.current
+      if (!frame) return
+
+      frame.onload = () => {
+        try {
+          frame.contentWindow?.focus()
+          frame.contentWindow?.print()
+        } catch {
+          // If this fails silently (can happen on iOS Safari), fall back to download
+          doc.save(`${shipment!.tracking_number}-label.pdf`)
+        }
       }
+      frame.src = blobUrl
     } finally {
       setGenerating(false)
     }
@@ -269,20 +273,24 @@ export default function ShipmentLabel() {
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4">
+      {/* Hidden iframe used to trigger the native print dialog directly on the PDF */}
+      <iframe ref={printFrameRef} className="hidden" title="print-frame" />
+
       <div className="max-w-md mx-auto mb-4 flex flex-wrap gap-3">
         <a href="/staff/shipments" className="text-orange underline text-sm self-center">← Back to shipments</a>
         <div className="ml-auto flex gap-2">
           <button onClick={handleDownload} disabled={generating} className="bg-navy text-white font-medium py-3 px-5 rounded-md disabled:opacity-50">
             {generating ? 'Generating…' : 'Download PDF'}
           </button>
-          <button onClick={handleOpenToPrint} disabled={generating} className="bg-orange text-white font-medium py-3 px-5 rounded-md disabled:opacity-50">
-            {generating ? 'Generating…' : 'Open to print'}
+          <button onClick={handlePrintDirectly} disabled={generating} className="bg-orange text-white font-medium py-3 px-5 rounded-md disabled:opacity-50">
+            {generating ? 'Preparing…' : 'Print'}
           </button>
         </div>
       </div>
 
       <div className="max-w-md mx-auto text-center text-xs text-slate mb-4">
         Preview below — the PDF exports at true 100×150mm (4×6in) regardless of what your browser's print dialog shows.
+        If "Print" doesn't open a dialog on your device, use "Download PDF" and print from your PDF viewer.
       </div>
 
       {boxes.map((n) => (
