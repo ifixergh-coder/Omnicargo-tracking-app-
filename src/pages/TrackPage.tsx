@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
 import { supabase } from '../lib/supabase'
 import { STATUS_LABELS } from '../lib/statusLabels'
@@ -133,6 +133,15 @@ export default function TrackPage() {
           <p className="text-xs uppercase tracking-wide text-slate mb-1">Status</p>
           <p className="text-lg font-semibold text-navy">{STATUS_LABELS[shipment.status] ?? shipment.status}</p>
           {shipment.destination_address && <p className="text-sm text-slate mt-2">Delivering to: {shipment.destination_address}</p>}
+
+          {shipment.status === 'delivered' && (
+            <Link
+              to={`/track/${shipment.tracking_number}/proof`}
+              className="inline-block mt-3 text-sm text-orange underline"
+            >
+              View delivery photo
+            </Link>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-5">
