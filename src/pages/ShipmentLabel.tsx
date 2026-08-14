@@ -23,7 +23,6 @@ type Shipment = {
 }
 
 const NAVY: [number, number, number] = [15, 42, 74]
-const ORANGE: [number, number, number] = [245, 130, 31]
 const SLATE: [number, number, number] = [61, 74, 92]
 const GRAY: [number, number, number] = [200, 200, 200]
 
@@ -74,9 +73,18 @@ function drawLabelPage(
   const logoBox = fitWithinBox(logo.width, logo.height, 24, 10)
   doc.addImage(logo.dataUrl, 'PNG', 5, 5, logoBox.width, logoBox.height)
 
+  // Box count badge — top-right corner
+  if (boxCount > 1) {
+    doc.setFontSize(9)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...NAVY)
+    doc.text(`${boxNumber}/${boxCount}`, 95, 8, { align: 'right' })
+  }
+
   doc.setFontSize(7)
+  doc.setFont('helvetica', 'normal')
   doc.setTextColor(...NAVY)
-  doc.text('STANDARD DELIVERY', 95, 9, { align: 'right' })
+  doc.text('STANDARD DELIVERY', 95, 13, { align: 'right' })
   doc.setLineWidth(0.3)
   doc.line(2, 15, 98, 15)
 
@@ -85,30 +93,24 @@ function drawLabelPage(
   doc.setFontSize(11)
   doc.setFont('courier', 'bold')
   doc.text(shipment.tracking_number, 50, 37, { align: 'center' })
-  if (boxCount > 1) {
-    doc.setFontSize(8)
-    doc.setTextColor(...ORANGE)
-    doc.text(`Box ${boxNumber} of ${boxCount}`, 50, 41, { align: 'center' })
-  }
-  doc.setTextColor(...NAVY)
   doc.setDrawColor(...NAVY)
-  doc.line(2, 44, 98, 44)
+  doc.line(2, 42, 98, 42)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...SLATE)
-  doc.text('SENDER', 5, 49)
-  doc.text('RECIPIENT', 52, 49)
+  doc.text('SENDER', 5, 47)
+  doc.text('RECIPIENT', 52, 47)
 
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8)
   doc.setTextColor(0, 0, 0)
-  doc.text(maskName(shipment.sender_name), 5, 54)
-  doc.text(maskPhone(shipment.sender_phone), 5, 58)
-  doc.text(maskName(shipment.recipient_name), 52, 54)
-  doc.text(maskPhone(shipment.recipient_phone), 52, 58)
+  doc.text(maskName(shipment.sender_name), 5, 52)
+  doc.text(maskPhone(shipment.sender_phone), 5, 56)
+  doc.text(maskName(shipment.recipient_name), 52, 52)
+  doc.text(maskPhone(shipment.recipient_phone), 52, 56)
 
-  let y = 62
+  let y = 60
   if (shipment.destination_address) {
     const lines = doc.splitTextToSize(shipment.destination_address, 44)
     doc.text(lines, 52, y)
@@ -121,29 +123,29 @@ function drawLabelPage(
   }
 
   doc.setDrawColor(...GRAY)
-  doc.line(49, 46, 49, 78)
+  doc.line(49, 44, 49, 76)
   doc.setDrawColor(...NAVY)
-  doc.line(2, 80, 98, 80)
+  doc.line(2, 78, 98, 78)
 
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(7)
   doc.setTextColor(...SLATE)
-  doc.text('WEIGHT', 25, 85, { align: 'center' })
-  doc.text('CBM', 75, 85, { align: 'center' })
+  doc.text('WEIGHT', 25, 83, { align: 'center' })
+  doc.text('CBM', 75, 83, { align: 'center' })
   doc.setFontSize(9)
   doc.setTextColor(0, 0, 0)
-  doc.text(`${shipment.weight_kg ?? '—'} kg`, 25, 90, { align: 'center' })
-  doc.text(`${shipment.cbm?.toFixed(3) ?? '—'} m³`, 75, 90, { align: 'center' })
+  doc.text(`${shipment.weight_kg ?? '—'} kg`, 25, 88, { align: 'center' })
+  doc.text(`${shipment.cbm?.toFixed(3) ?? '—'} m³`, 75, 88, { align: 'center' })
 
   doc.setDrawColor(...GRAY)
-  doc.line(49, 82, 49, 92)
+  doc.line(49, 80, 49, 90)
   doc.setDrawColor(...NAVY)
-  doc.line(2, 94, 98, 94)
+  doc.line(2, 92, 98, 92)
 
-  doc.addImage(qrDataUrl, 'PNG', 35, 100, 30, 30)
+  doc.addImage(qrDataUrl, 'PNG', 35, 98, 30, 30)
   doc.setFontSize(6)
   doc.setTextColor(...SLATE)
-  doc.text('Scan for full details', 50, 133, { align: 'center' })
+  doc.text('Scan for full details', 50, 131, { align: 'center' })
 
   doc.setFontSize(6)
   doc.text(`Printed ${printedAt}`, 50, 145, { align: 'center' })
@@ -175,7 +177,13 @@ function LabelCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; box
   const qrValue = `${window.location.origin}/staff/scan/${shipment.tracking_number}`
 
   return (
-    <div className="label-sheet bg-white border-2 border-navy overflow-hidden flex flex-col">
+    <div className="label-sheet relative bg-white border-2 border-navy overflow-hidden flex flex-col">
+      {shipment.box_count > 1 && (
+        <span className="absolute top-1.5 right-2 text-xs font-bold text-navy">
+          {boxNumber}/{shipment.box_count}
+        </span>
+      )}
+
       <div className="px-3 py-2 flex items-center justify-between border-b-2 border-navy shrink-0">
         <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6 w-auto object-contain" />
         <span className="text-[10px] font-semibold text-navy">STANDARD DELIVERY</span>
@@ -184,9 +192,6 @@ function LabelCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; box
       <div className="px-3 py-2 border-b border-gray-300 shrink-0">
         <svg ref={barcodeRef} className="w-full" />
         <p className="text-center font-mono font-bold text-base mt-0.5">{shipment.tracking_number}</p>
-        {shipment.box_count > 1 && (
-          <p className="text-center text-xs font-semibold text-orange mt-0.5">Box {boxNumber} of {shipment.box_count}</p>
-        )}
       </div>
 
       <div className="grid grid-cols-2 divide-x divide-gray-300 border-b border-gray-300 shrink-0">
