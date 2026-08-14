@@ -73,18 +73,10 @@ function drawLabelPage(
   const logoBox = fitWithinBox(logo.width, logo.height, 24, 10)
   doc.addImage(logo.dataUrl, 'PNG', 5, 5, logoBox.width, logoBox.height)
 
-  // Box count badge — top-right corner
-  if (boxCount > 1) {
-    doc.setFontSize(9)
-    doc.setFont('helvetica', 'bold')
-    doc.setTextColor(...NAVY)
-    doc.text(`${boxNumber}/${boxCount}`, 95, 8, { align: 'right' })
-  }
-
   doc.setFontSize(7)
   doc.setFont('helvetica', 'normal')
   doc.setTextColor(...NAVY)
-  doc.text('STANDARD DELIVERY', 95, 13, { align: 'right' })
+  doc.text('STANDARD DELIVERY', 95, 9, { align: 'right' })
   doc.setLineWidth(0.3)
   doc.line(2, 15, 98, 15)
 
@@ -142,10 +134,18 @@ function drawLabelPage(
   doc.setDrawColor(...NAVY)
   doc.line(2, 92, 98, 92)
 
-  doc.addImage(qrDataUrl, 'PNG', 35, 98, 30, 30)
+  // Box count badge — sits in the open space just below the weight/CBM row
+  if (boxCount > 1) {
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(...NAVY)
+    doc.text(`${boxNumber}/${boxCount}`, 95, 97, { align: 'right' })
+  }
+
+  doc.addImage(qrDataUrl, 'PNG', 35, 100, 30, 30)
   doc.setFontSize(6)
   doc.setTextColor(...SLATE)
-  doc.text('Scan for full details', 50, 131, { align: 'center' })
+  doc.text('Scan for full details', 50, 133, { align: 'center' })
 
   doc.setFontSize(6)
   doc.text(`Printed ${printedAt}`, 50, 145, { align: 'center' })
@@ -177,13 +177,7 @@ function LabelCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; box
   const qrValue = `${window.location.origin}/staff/scan/${shipment.tracking_number}`
 
   return (
-    <div className="label-sheet relative bg-white border-2 border-navy overflow-hidden flex flex-col">
-      {shipment.box_count > 1 && (
-        <span className="absolute top-1.5 right-2 text-xs font-bold text-navy">
-          {boxNumber}/{shipment.box_count}
-        </span>
-      )}
-
+    <div className="label-sheet bg-white border-2 border-navy overflow-hidden flex flex-col">
       <div className="px-3 py-2 flex items-center justify-between border-b-2 border-navy shrink-0">
         <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6 w-auto object-contain" />
         <span className="text-[10px] font-semibold text-navy">STANDARD DELIVERY</span>
@@ -219,6 +213,12 @@ function LabelCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; box
           <p className="font-semibold text-xs">{shipment.cbm?.toFixed(3) ?? '—'} m³</p>
         </div>
       </div>
+
+      {shipment.box_count > 1 && (
+        <div className="px-3 pt-1.5 shrink-0 flex justify-end">
+          <span className="text-sm font-bold text-navy">{boxNumber}/{shipment.box_count}</span>
+        </div>
+      )}
 
       <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2">
         <QRCodeSVG value={qrValue} size={72} />
