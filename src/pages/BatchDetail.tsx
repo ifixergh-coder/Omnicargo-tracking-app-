@@ -29,6 +29,7 @@ export default function BatchDetail() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null)
   const [updating, setUpdating] = useState(false)
   const [savedMessage, setSavedMessage] = useState<string | null>(null)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null)
 
   function loadAll() {
@@ -70,12 +71,26 @@ export default function BatchDetail() {
     loadAll()
   }
 
+  const lockedMembers = members.filter((m) => m.status === 'delivered')
+  const unlockedMembers = members.filter((m) => m.status !== 'delivered')
+
   async function confirmBulkStatus() {
-    if (!batch || !selectedStatus || members.length === 0) return
+    if (!batch || !selectedStatus || unlockedMembers.length === 0) return
     setUpdating(true)
+    setErrorMessage(null)
+
     await supabase.from('batches').update({ status: selectedStatus }).eq('id', batch.id)
-    await supabase.from('shipments').update({ status: selectedStatus }).eq('batch_id', batch.id)
-    const events = members.map((m) => ({
+
+    const idsToUpdate = unlockedMembers.map((m) => m.id)
+    const { error: updateError } = await supabase.from('shipments').update({ status: selectedStatus }).in('id', idsToUpdate)
+
+    if (updateError) {
+      setUpdating(false)
+      setErrorMessage(updateError.message)
+      return
+    }
+
+    const events = unlockedMembers.map((m) => ({
       shipment_id: m.id,
       status: selectedStatus,
       note: `Bulk update via batch ${batch.batch_number}`,
@@ -83,8 +98,12 @@ export default function BatchDetail() {
     }))
     await supabase.from('status_events').insert(events)
     setUpdating(false)
-    setSavedMessage(`All ${members.length} item(s) updated to "${STATUS_LABELS[selectedStatus]}"`)
-    setTimeout(() => setSavedMessage(null), 4000)
+    setSavedMessage(
+      lockedMembers.length > 0
+        ? `${unlockedMembers.length} item(s) updated. ${lockedMembers.length} already-delivered item(s) were skipped.`
+        : `All ${unlockedMembers.length} item(s) updated to "${STATUS_LABELS[selectedStatus]}"`
+    )
+    setTimeout(() => setSavedMessage(null), 5000)
     loadAll()
   }
 
@@ -105,6 +124,12 @@ export default function BatchDetail() {
           </div>
           <p className="text-sm text-slate mb-4">{batch.origin ?? '—'} → {batch.destination ?? '—'} · {members.length} item(s)</p>
 
+          {lockedMembers.length > 0 && (
+            <p className="text-xs text-green-700 bg-green-50 border border-green-200 rounded-md p-2 mb-3">
+              ✓ {lockedMembers.length} item(s) in this batch are already delivered and locked — bulk updates will skip them.
+            </p>
+          )}
+
           <p className="text-xs font-semibold text-slate uppercase mb-2">
             Current status: <span className="text-navy">{STATUS_LABELS[batch.status]}</span>
           </p>
@@ -123,11 +148,12 @@ export default function BatchDetail() {
           </div>
           <button
             onClick={confirmBulkStatus}
-            disabled={!hasChange || updating || members.length === 0}
+            disabled={!hasChange || updating || unlockedMembers.length === 0}
             className="w-full bg-navy text-white font-medium py-3 rounded-md disabled:opacity-40"
           >
-            {updating ? 'Updating all items…' : hasChange ? `Update all ${members.length} item(s) to: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
+            {updating ? 'Updating…' : hasChange ? `Update ${unlockedMembers.length} item(s) to: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
           </button>
+          {errorMessage && <p className="text-sm text-red-600 text-center mt-3">{errorMessage}</p>}
           {savedMessage && <p className="text-sm text-green-600 text-center mt-3 font-medium">✓ {savedMessage}</p>}
         </div>
 
@@ -139,7 +165,10 @@ export default function BatchDetail() {
               <div key={m.id} className="flex items-center justify-between text-sm border-b border-gray-100 pb-2">
                 <div>
                   <p className="font-mono text-navy">{m.tracking_number}</p>
-                  <p className="text-xs text-slate">{m.sender_name} → {m.recipient_name}</p>
+                  <p className="text-xs text-slate">
+                    {m.sender_name} → {m.recipient_name}
+                    {m.status === 'delivered' && <span className="text-green-700 ml-1">· Delivered (locked)</span>}
+                  </p>
                 </div>
                 <button onClick={() => removeMember(m.id)} className="text-xs text-red-600 underline">Remove</button>
               </div>
