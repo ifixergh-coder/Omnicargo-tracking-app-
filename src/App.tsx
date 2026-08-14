@@ -4,6 +4,7 @@ import ProtectedRoute from './components/ProtectedRoute'
 
 const Home = lazy(() => import('./pages/Home'))
 const TrackPage = lazy(() => import('./pages/TrackPage'))
+const DeliveryProofPage = lazy(() => import('./pages/DeliveryProofPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
 const DriverSignup = lazy(() => import('./pages/DriverSignup'))
 const DriverLogin = lazy(() => import('./pages/DriverLogin'))
@@ -40,6 +41,7 @@ export default function App() {
           <Route path="/" element={<Home />} />
           <Route path="/track" element={<TrackPage />} />
           <Route path="/track/:trackingNumber" element={<TrackPage />} />
+          <Route path="/track/:trackingNumber/proof" element={<DeliveryProofPage />} />
           <Route path="/driver" element={<ProtectedRoute><DriverPage /></ProtectedRoute>} />
           <Route path="/driver/signup" element={<DriverSignup />} />
           <Route path="/driver/login" element={<DriverLogin />} />
