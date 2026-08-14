@@ -164,7 +164,7 @@ async function buildLabelPdf(shipment: Shipment, printedAt: string): Promise<jsP
   return doc
 }
 
-function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; boxNumber: number; printedAt: string }) {
+function LabelCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; boxNumber: number; printedAt: string }) {
   const barcodeRef = useRef<SVGSVGElement>(null)
   useEffect(() => {
     if (barcodeRef.current) {
@@ -175,11 +175,12 @@ function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipme
   const qrValue = `${window.location.origin}/staff/scan/${shipment.tracking_number}`
 
   return (
-    <div className="w-[280px] mx-auto bg-white border-2 border-navy overflow-hidden flex flex-col mb-6" style={{ aspectRatio: '100 / 150' }}>
+    <div className="label-sheet bg-white border-2 border-navy overflow-hidden flex flex-col">
       <div className="px-3 py-2 flex items-center justify-between border-b-2 border-navy shrink-0">
         <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6 w-auto object-contain" />
         <span className="text-[10px] font-semibold text-navy">STANDARD DELIVERY</span>
       </div>
+
       <div className="px-3 py-2 border-b border-gray-300 shrink-0">
         <svg ref={barcodeRef} className="w-full" />
         <p className="text-center font-mono font-bold text-base mt-0.5">{shipment.tracking_number}</p>
@@ -187,6 +188,7 @@ function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipme
           <p className="text-center text-xs font-semibold text-orange mt-0.5">Box {boxNumber} of {shipment.box_count}</p>
         )}
       </div>
+
       <div className="grid grid-cols-2 divide-x divide-gray-300 border-b border-gray-300 shrink-0">
         <div className="px-3 py-2">
           <p className="text-[9px] font-semibold text-slate uppercase mb-0.5">Sender</p>
@@ -201,6 +203,7 @@ function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipme
           {shipment.destination_gps && <p className="text-[9px] text-slate mt-0.5">GPS: {shipment.destination_gps}</p>}
         </div>
       </div>
+
       <div className="grid grid-cols-2 divide-x divide-gray-300 border-b border-gray-300 text-center shrink-0">
         <div className="px-2 py-1.5">
           <p className="text-[9px] text-slate">Weight</p>
@@ -211,10 +214,12 @@ function LabelPreviewCard({ shipment, boxNumber, printedAt }: { shipment: Shipme
           <p className="font-semibold text-xs">{shipment.cbm?.toFixed(3) ?? '—'} m³</p>
         </div>
       </div>
+
       <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2">
         <QRCodeSVG value={qrValue} size={72} />
         <p className="text-[8px] text-slate">Scan for full details</p>
       </div>
+
       <p className="text-[8px] text-slate text-center pb-1 shrink-0">Printed {printedAt}</p>
     </div>
   )
@@ -224,8 +229,7 @@ export default function ShipmentLabel() {
   const { id } = useParams()
   const [shipment, setShipment] = useState<Shipment | null>(null)
   const [printedAt] = useState(() => new Date().toLocaleString())
-  const [generating, setGenerating] = useState(false)
-  const printFrameRef = useRef<HTMLIFrameElement>(null)
+  const [generatingPdf, setGeneratingPdf] = useState(false)
 
   useEffect(() => {
     if (!id) return
@@ -238,69 +242,60 @@ export default function ShipmentLabel() {
   const boxCount = shipment.box_count ?? 1
   const boxes = Array.from({ length: boxCount }, (_, i) => i + 1)
 
-  async function handleDownload() {
-    setGenerating(true)
+  async function handleDownloadPdf() {
+    setGeneratingPdf(true)
     try {
       const doc = await buildLabelPdf(shipment!, printedAt)
       doc.save(`${shipment!.tracking_number}-label.pdf`)
     } finally {
-      setGenerating(false)
-    }
-  }
-
-  async function handlePrintDirectly() {
-    setGenerating(true)
-    try {
-      const doc = await buildLabelPdf(shipment!, printedAt)
-      // Use a real Blob + object URL rather than the data-URI form —
-      // more reliable for multi-page PDFs loading fully in an iframe
-      const blob = doc.output('blob')
-      const blobUrl = URL.createObjectURL(blob)
-      const frame = printFrameRef.current
-      if (!frame) return
-
-      frame.onload = () => {
-        // Small delay ensures the PDF viewer has rendered every page,
-        // not just the container, before the print dialog opens
-        setTimeout(() => {
-          try {
-            frame.contentWindow?.focus()
-            frame.contentWindow?.print()
-          } catch {
-            doc.save(`${shipment!.tracking_number}-label.pdf`)
-          }
-        }, 300)
-      }
-      frame.src = blobUrl
-    } finally {
-      setGenerating(false)
+      setGeneratingPdf(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-gray-100 py-8 px-4">
-      {/* Hidden iframe used to trigger the native print dialog directly on the PDF */}
-      <iframe ref={printFrameRef} className="hidden" title="print-frame" />
+    <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
+      <style>{`
+        .label-sheet {
+          width: 100mm;
+          height: 150mm;
+          margin: 0 auto 24px auto;
+        }
+        @media print {
+          @page {
+            size: 100mm 150mm;
+            margin: 0;
+          }
+          .label-sheet {
+            margin: 0;
+            page-break-after: always;
+            break-after: page;
+          }
+          .label-sheet:last-child {
+            page-break-after: auto;
+            break-after: auto;
+          }
+        }
+      `}</style>
 
-      <div className="max-w-md mx-auto mb-4 flex flex-wrap gap-3">
+      <div className="max-w-md mx-auto mb-4 print:hidden flex flex-wrap gap-3">
         <a href="/staff/shipments" className="text-orange underline text-sm self-center">← Back to shipments</a>
         <div className="ml-auto flex gap-2">
-          <button onClick={handleDownload} disabled={generating} className="bg-navy text-white font-medium py-3 px-5 rounded-md disabled:opacity-50">
-            {generating ? 'Generating…' : 'Download PDF'}
+          <button onClick={handleDownloadPdf} disabled={generatingPdf} className="bg-navy text-white font-medium py-3 px-5 rounded-md disabled:opacity-50">
+            {generatingPdf ? 'Generating…' : 'Download PDF'}
           </button>
-          <button onClick={handlePrintDirectly} disabled={generating} className="bg-orange text-white font-medium py-3 px-5 rounded-md disabled:opacity-50">
-            {generating ? 'Preparing…' : 'Print'}
+          <button onClick={() => window.print()} className="bg-orange text-white font-medium py-3 px-6 rounded-md">
+            Print {boxCount > 1 ? `all ${boxCount} labels` : 'label'}
           </button>
         </div>
       </div>
 
-      <div className="max-w-md mx-auto text-center text-xs text-slate mb-4">
-        Preview below — the PDF exports at true 100×150mm (4×6in) regardless of what your browser's print dialog shows.
-        If "Print" doesn't open a dialog on your device, use "Download PDF" and print from your PDF viewer.
+      <div className="print:hidden text-center text-xs text-slate mb-4">
+        "Print" opens your printer dialog directly — set paper size to 100×150mm (4×6in) there if not auto-selected.
+        "Download PDF" saves a file already sized correctly, for printers that need an exact-size file instead.
       </div>
 
       {boxes.map((n) => (
-        <LabelPreviewCard key={n} shipment={shipment} boxNumber={n} printedAt={printedAt} />
+        <LabelCard key={n} shipment={shipment} boxNumber={n} printedAt={printedAt} />
       ))}
     </div>
   )
