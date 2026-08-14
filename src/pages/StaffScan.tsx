@@ -117,8 +117,6 @@ export default function StaffScan() {
           // not a URL, use raw text
         }
         try { await scanner.stop(); await scanner.clear() } catch {}
-        // Full page navigation here (not client-side) — the camera video
-        // element doesn't hand off cleanly to the next page otherwise
         window.location.href = `/staff/scan/${extracted}`
       },
       () => {},
@@ -157,7 +155,16 @@ export default function StaffScan() {
       })
     }
 
-    await supabase.from('shipments').update({ status: selectedStatus }).eq('id', shipment.id)
+    const { error: updateError } = await supabase.from('shipments').update({ status: selectedStatus }).eq('id', shipment.id)
+
+    if (updateError) {
+      setUpdating(false)
+      alert(updateError.message.includes('already been delivered')
+        ? 'This shipment was already delivered and its status is locked.'
+        : `Could not update status: ${updateError.message}`)
+      return
+    }
+
     await supabase.from('status_events').insert({ shipment_id: shipment.id, status: selectedStatus, updated_by_email: currentUserEmail })
     setShipment({ ...shipment, status: selectedStatus })
     setUpdating(false)
@@ -178,6 +185,7 @@ export default function StaffScan() {
     }
     if (!shipment) return null
 
+    const isLocked = shipment.status === 'delivered'
     const hasChange = selectedStatus !== shipment.status
     const needsPhoto = selectedStatus === 'delivered' && hasChange
 
@@ -227,30 +235,45 @@ export default function StaffScan() {
               <p className="text-xs font-semibold text-slate uppercase mb-2">
                 Current status: <span className="text-navy">{STATUS_LABELS[shipment.status]}</span>
               </p>
-              <p className="text-xs text-slate mb-2">Select a new status, then confirm below</p>
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {STATUS_OPTIONS.map((s) => (
-                  <button key={s} onClick={() => setSelectedStatus(s)} className={`text-sm py-2 px-2 rounded-md border text-center leading-tight ${selectedStatus === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'}`}>
-                    {STATUS_LABELS[s]}
-                  </button>
-                ))}
-              </div>
 
-              {needsPhoto && (
-                <div className="bg-gray-50 rounded-md p-3 mb-4 space-y-2">
-                  <p className="text-xs font-semibold text-slate uppercase">Delivery proof (required)</p>
-                  <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value as any)} className="w-full border rounded-md px-3 py-2 text-sm">
-                    <option value="handed_to_person">Handed to person</option>
-                    <option value="left_at_location">Left at location</option>
-                  </select>
-                  <input type="file" accept="image/*" capture="environment" onChange={(e) => setProofPhoto(e.target.files?.[0] ?? null)} className="w-full text-sm" />
-                  <input placeholder="Note (optional)" value={proofNote} onChange={(e) => setProofNote(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" />
+              {isLocked ? (
+                <div className="bg-green-50 border border-green-200 rounded-md p-3 text-sm text-green-800">
+                  ✓ This shipment has been delivered. Its status is locked and can no longer be changed.
                 </div>
-              )}
+              ) : (
+                <>
+                  <p className="text-xs text-slate mb-2">Select a new status, then confirm below</p>
+                  <div className="grid grid-cols-2 gap-2 mb-4">
+                    {STATUS_OPTIONS.map((s) => (
+                      <button key={s} onClick={() => setSelectedStatus(s)} className={`text-sm py-2 px-2 rounded-md border text-center leading-tight ${selectedStatus === s ? 'bg-orange text-white border-orange' : 'border-gray-300 text-navy'}`}>
+                        {STATUS_LABELS[s]}
+                      </button>
+                    ))}
+                  </div>
 
-              <button onClick={confirmStatusUpdate} disabled={!hasChange || updating} className="w-full bg-navy text-white font-medium py-3 rounded-md disabled:opacity-40">
-                {updating ? 'Saving…' : hasChange ? `Confirm: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
-              </button>
+                  {needsPhoto && (
+                    <div className="bg-gray-50 rounded-md p-3 mb-4 space-y-2">
+                      <p className="text-xs font-semibold text-slate uppercase">Delivery proof (required)</p>
+                      <select value={deliveryType} onChange={(e) => setDeliveryType(e.target.value as any)} className="w-full border rounded-md px-3 py-2 text-sm">
+                        <option value="handed_to_person">Handed to person</option>
+                        <option value="left_at_location">Left at location</option>
+                      </select>
+                      <input type="file" accept="image/*" capture="environment" onChange={(e) => setProofPhoto(e.target.files?.[0] ?? null)} className="w-full text-sm" />
+                      <input placeholder="Note (optional)" value={proofNote} onChange={(e) => setProofNote(e.target.value)} className="w-full border rounded-md px-3 py-2 text-sm" />
+                    </div>
+                  )}
+
+                  {needsPhoto && (
+                    <p className="text-xs text-orange bg-orange/10 rounded-md p-2 mb-3">
+                      ⚠ Marking as delivered locks this shipment permanently. Double-check the photo before confirming.
+                    </p>
+                  )}
+
+                  <button onClick={confirmStatusUpdate} disabled={!hasChange || updating} className="w-full bg-navy text-white font-medium py-3 rounded-md disabled:opacity-40">
+                    {updating ? 'Saving…' : hasChange ? `Confirm: ${STATUS_LABELS[selectedStatus!]}` : 'No change selected'}
+                  </button>
+                </>
+              )}
 
               {savedMessage && <p className="text-sm text-green-600 text-center mt-3 font-medium">✓ {savedMessage}</p>}
             </div>
