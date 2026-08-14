@@ -1,13 +1,17 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { buildRegulatorCsv, downloadCsv } from '../lib/csvExport'
 import StaffNav from '../components/StaffNav'
 
 type Shipment = {
   tracking_number: string
   sender_name: string
+  sender_phone: string | null
   recipient_name: string
   recipient_phone: string | null
+  pickup_location: string | null
   destination_address: string | null
+  package_description: string | null
   weight_kg: number | null
   cbm: number | null
 }
@@ -23,7 +27,7 @@ export default function DailyWaybill() {
     const end = new Date(date); end.setHours(23, 59, 59, 999)
 
     supabase.from('shipments')
-      .select('tracking_number, sender_name, recipient_name, recipient_phone, destination_address, weight_kg, cbm')
+      .select('tracking_number, sender_name, sender_phone, recipient_name, recipient_phone, pickup_location, destination_address, package_description, weight_kg, cbm')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
       .then(({ data }) => {
@@ -35,6 +39,22 @@ export default function DailyWaybill() {
   const totalWeight = items.reduce((sum, i) => sum + (i.weight_kg ?? 0), 0)
   const totalCbm = items.reduce((sum, i) => sum + (i.cbm ?? 0), 0)
 
+  function handleRegulatorExport() {
+    const csv = buildRegulatorCsv(
+      items.map((i) => ({
+        senderFullName: i.sender_name,
+        senderPhone: i.sender_phone ?? '',
+        recipientFullName: i.recipient_name,
+        recipientPhone: i.recipient_phone ?? '',
+        pickupLocation: i.pickup_location ?? '',
+        deliveryLocation: i.destination_address ?? '',
+        reference: i.tracking_number,
+        packageDescription: i.package_description ?? '',
+      }))
+    )
+    downloadCsv(`omnicargo-deliveries-${date}.csv`, csv)
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 pb-24 md:pb-8">
       <div className="print:hidden">
@@ -42,10 +62,13 @@ export default function DailyWaybill() {
       </div>
 
       <div className="max-w-3xl mx-auto px-4">
-        <div className="print:hidden flex items-center gap-3 mb-4">
+        <div className="print:hidden flex flex-wrap items-center gap-3 mb-4">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-md px-3 py-2" />
           <button onClick={() => window.print()} className="bg-orange text-white font-medium py-2 px-6 rounded-md">
             Print
+          </button>
+          <button onClick={handleRegulatorExport} disabled={items.length === 0} className="bg-navy text-white font-medium py-2 px-6 rounded-md disabled:opacity-50">
+            Export CSV for regulator
           </button>
         </div>
 
