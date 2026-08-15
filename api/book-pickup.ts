@@ -16,7 +16,7 @@ export default async function handler(req: any, res: any) {
     recipientName, recipientPhone, recipientEmail,
     pickupAddress, pickupLat, pickupLng,
     destinationAddress, destinationLat, destinationLng, destinationGps,
-    lengthCm, widthCm, heightCm, weightKg,
+    cbmMode, directCbm, lengthCm, widthCm, heightCm, weightKg, boxCount,
     packageDescription,
   } = req.body ?? {}
 
@@ -38,7 +38,7 @@ export default async function handler(req: any, res: any) {
   const w = parseFloat(widthCm) || 0
   const h = parseFloat(heightCm) || 0
   const weight = parseFloat(weightKg) || 0
-  const cbm = l && w && h ? (l * w * h) / 1_000_000 : 0
+  const cbm = cbmMode === 'direct' ? (parseFloat(directCbm) || 0) : (l && w && h ? (l * w * h) / 1_000_000 : 0)
 
   const baseCharge = cbm * pricePerCbm
   const allowance = cbm * includedKgPerCbm
@@ -59,7 +59,8 @@ export default async function handler(req: any, res: any) {
     destination_gps: destinationGps || null,
     package_description: packageDescription || null,
     length_cm: l || null, width_cm: w || null, height_cm: h || null,
-    weight_kg: weight || null, cbm: cbm || null,
+    weight_kg: weight || null, cbm: cbm || null, cbm_entry_mode: cbmMode === 'direct' ? 'direct' : 'dimensions',
+    box_count: parseInt(boxCount) || 1,
     price_per_cbm: pricePerCbm, included_kg_per_cbm: includedKgPerCbm, extra_kg_rate: extraKgRate,
     total_charge: totalCharge || null,
     status: 'pending', source: 'customer_web',
