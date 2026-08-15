@@ -15,6 +15,7 @@ const DriverPage = lazy(() => import('./pages/DriverPage'))
 const DriverSignup = lazy(() => import('./pages/DriverSignup'))
 const DriverLogin = lazy(() => import('./pages/DriverLogin'))
 const StaffLogin = lazy(() => import('./pages/StaffLogin'))
+const StaffSignup = lazy(() => import('./pages/StaffSignup'))
 const StaffShipments = lazy(() => import('./pages/StaffShipments'))
 const StaffVehicles = lazy(() => import('./pages/StaffVehicles'))
 const StaffBatches = lazy(() => import('./pages/StaffBatches'))
@@ -22,6 +23,7 @@ const BatchDetail = lazy(() => import('./pages/BatchDetail'))
 const BatchWaybill = lazy(() => import('./pages/BatchWaybill'))
 const DailyWaybill = lazy(() => import('./pages/DailyWaybill'))
 const NewShipment = lazy(() => import('./pages/NewShipment'))
+const StaffBookPickup = lazy(() => import('./pages/StaffBookPickup'))
 const ShipmentLabel = lazy(() => import('./pages/ShipmentLabel'))
 const ShipmentInvoice = lazy(() => import('./pages/ShipmentInvoice'))
 const StaffScan = lazy(() => import('./pages/StaffScan'))
@@ -29,6 +31,7 @@ const StaffCustomers = lazy(() => import('./pages/StaffCustomers'))
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
 const StaffPricingSettings = lazy(() => import('./pages/StaffPricingSettings'))
 const ManagementDashboard = lazy(() => import('./pages/ManagementDashboard'))
+const ManagementStaff = lazy(() => import('./pages/ManagementStaff'))
 
 function PageLoading() {
   return (
@@ -59,8 +62,10 @@ export default function App() {
           <Route path="/driver/signup" element={<DriverSignup />} />
           <Route path="/driver/login" element={<DriverLogin />} />
           <Route path="/staff/login" element={<StaffLogin />} />
+          <Route path="/staff/signup" element={<StaffSignup />} />
           <Route path="/staff/shipments" element={<ProtectedRoute><StaffShipments /></ProtectedRoute>} />
           <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
+          <Route path="/staff/book-pickup" element={<ProtectedRoute><StaffBookPickup /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
           <Route path="/staff/vehicles" element={<ProtectedRoute><StaffVehicles /></ProtectedRoute>} />
@@ -74,6 +79,7 @@ export default function App() {
           <Route path="/staff/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
           <Route path="/management" element={<ProtectedRoute><ManagerRoute><ManagementDashboard /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/pricing" element={<ProtectedRoute><ManagerRoute><StaffPricingSettings /></ManagerRoute></ProtectedRoute>} />
+          <Route path="/management/staff" element={<ProtectedRoute><ManagerRoute><ManagementStaff /></ManagerRoute></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </BrowserRouter>
