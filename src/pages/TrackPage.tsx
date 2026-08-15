@@ -49,17 +49,19 @@ export default function TrackPage() {
       .select('id, tracking_number, status, sender_name, recipient_name, destination_address, assigned_vehicle_id')
       .eq('tracking_number', trackingNumber)
       .maybeSingle()
-      .then(({ data, error }) => {
-        if (error || !data) { setNotFound(true); setShipment(null) }
-        else setShipment(data as Shipment)
-        setLoading(false)
-      })
-      .catch(() => {
-        // Guarantees the page never hangs on "Looking up shipment…" forever,
-        // even if something unexpected breaks the request itself
-        setNotFound(true)
-        setLoading(false)
-      })
+      .then(
+        ({ data, error }) => {
+          if (error || !data) { setNotFound(true); setShipment(null) }
+          else setShipment(data as Shipment)
+          setLoading(false)
+        },
+        () => {
+          // Guarantees the page never hangs on "Looking up shipment…" forever,
+          // even if something unexpected breaks the request itself
+          setNotFound(true)
+          setLoading(false)
+        },
+      )
   }, [trackingNumber])
 
   useEffect(() => {
