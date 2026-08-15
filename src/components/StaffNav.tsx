@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Package, PlusCircle, Truck, ScanLine, LogOut, Boxes, ClipboardList, Users } from 'lucide-react'
+import { Package, PlusCircle, Truck, ScanLine, LogOut, Boxes, ClipboardList, Users, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const LINKS = [
@@ -44,6 +44,10 @@ export default function StaffNav() {
             <ClipboardList size={16} />
             Daily list
           </Link>
+          <Link to="/management" className="flex items-center gap-2 px-4 py-2 rounded-full text-sm text-white/70 hover:bg-white/10 hover:text-white">
+            <ShieldCheck size={16} />
+            Management
+          </Link>
           <button onClick={handleLogout} className="flex items-center gap-2 px-4 py-2 rounded-full text-sm text-white/50 hover:text-white/80 transition-colors">
             <LogOut size={16} />
             Log out
@@ -56,6 +60,7 @@ export default function StaffNav() {
         <div className="flex items-center gap-3">
           <Link to="/staff/customers" className="text-white/60 text-xs">Customers</Link>
           <Link to="/staff/waybill/daily" className="text-white/60 text-xs">Daily list</Link>
+          <Link to="/management" className="text-white/60 text-xs">Management</Link>
           <button onClick={handleLogout} className="text-white/60 text-xs flex items-center gap-1">
             <LogOut size={14} />
             Log out
