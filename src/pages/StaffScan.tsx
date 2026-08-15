@@ -13,7 +13,12 @@ type Shipment = {
   recipient_name: string
   recipient_phone: string | null
   recipient_email: string | null
+  pickup_location: string | null
+  pickup_lat: number | null
+  pickup_lng: number | null
   destination_address: string | null
+  destination_lat: number | null
+  destination_lng: number | null
   destination_gps: string | null
   weight_kg: number | null
   cbm: number | null
@@ -41,6 +46,10 @@ function playScanFeedback() {
   if ('vibrate' in navigator) {
     navigator.vibrate(80) // no effect on iOS Safari, which doesn't support this API
   }
+}
+
+function mapsLink(lat: number, lng: number) {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
 }
 
 export default function StaffScan() {
@@ -212,8 +221,40 @@ export default function StaffScan() {
               </div>
             </div>
 
-            {shipment.destination_address && <p className="text-sm text-slate mb-1">Address: {shipment.destination_address}</p>}
-            {shipment.destination_gps && <p className="text-sm text-slate mb-3">GPS: {shipment.destination_gps}</p>}
+            {(shipment.pickup_location || (shipment.pickup_lat && shipment.pickup_lng)) && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-slate uppercase mb-1">Pickup location</p>
+                {shipment.pickup_location && <p className="text-sm text-slate">{shipment.pickup_location}</p>}
+                {shipment.pickup_lat != null && shipment.pickup_lng != null && (
+                  <a
+                    href={mapsLink(shipment.pickup_lat, shipment.pickup_lng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-orange underline"
+                  >
+                    Open in Google Maps
+                  </a>
+                )}
+              </div>
+            )}
+
+            {(shipment.destination_address || (shipment.destination_lat && shipment.destination_lng)) && (
+              <div className="mb-3">
+                <p className="text-xs font-semibold text-slate uppercase mb-1">Delivery address</p>
+                {shipment.destination_address && <p className="text-sm text-slate">{shipment.destination_address}</p>}
+                {shipment.destination_gps && <p className="text-xs text-slate">GPS: {shipment.destination_gps}</p>}
+                {shipment.destination_lat != null && shipment.destination_lng != null && (
+                  <a
+                    href={mapsLink(shipment.destination_lat, shipment.destination_lng)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-orange underline"
+                  >
+                    Open in Google Maps
+                  </a>
+                )}
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4 mb-4 text-sm">
               <p>Weight: <span className="font-semibold">{shipment.weight_kg ?? '—'} kg</span></p>
