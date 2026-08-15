@@ -1,10 +1,12 @@
-import { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useState, useEffect } from 'react'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import LocationSearch from '../components/LocationSearch'
 import PublicNav from '../components/PublicNav'
 
 export default function BookPickupPage() {
   const navigate = useNavigate()
+  const [searchParams] = useSearchParams()
+
   const [senderName, setSenderName] = useState('')
   const [senderPhone, setSenderPhone] = useState('')
   const [senderEmail, setSenderEmail] = useState('')
@@ -23,11 +25,28 @@ export default function BookPickupPage() {
   const [locatingDestination, setLocatingDestination] = useState(false)
   const [destinationGps, setDestinationGps] = useState('')
 
+  const [cbmMode, setCbmMode] = useState<'dimensions' | 'direct'>('dimensions')
+  const [directCbm, setDirectCbm] = useState('')
   const [lengthCm, setLengthCm] = useState('')
   const [widthCm, setWidthCm] = useState('')
   const [heightCm, setHeightCm] = useState('')
   const [weightKg, setWeightKg] = useState('')
+  const [boxCount, setBoxCount] = useState('1')
   const [packageDescription, setPackageDescription] = useState('')
+  const [prefilledFromCalculator, setPrefilledFromCalculator] = useState(false)
+
+  useEffect(() => {
+    if (searchParams.has('cbmMode')) {
+      setCbmMode(searchParams.get('cbmMode') === 'direct' ? 'direct' : 'dimensions')
+      setDirectCbm(searchParams.get('cbm') ?? '')
+      setLengthCm(searchParams.get('lengthCm') ?? '')
+      setWidthCm(searchParams.get('widthCm') ?? '')
+      setHeightCm(searchParams.get('heightCm') ?? '')
+      setWeightKg(searchParams.get('weightKg') ?? '')
+      setBoxCount(searchParams.get('boxCount') ?? '1')
+      setPrefilledFromCalculator(true)
+    }
+  }, [searchParams])
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -77,7 +96,7 @@ export default function BookPickupPage() {
           recipientName, recipientPhone, recipientEmail,
           pickupAddress, pickupLat, pickupLng,
           destinationAddress, destinationLat, destinationLng, destinationGps,
-          lengthCm, widthCm, heightCm, weightKg,
+          cbmMode, directCbm, lengthCm, widthCm, heightCm, weightKg, boxCount,
           packageDescription,
         }),
       })
@@ -99,7 +118,12 @@ export default function BookPickupPage() {
       <PublicNav />
       <div className="max-w-lg mx-auto px-6 py-12">
         <h1 className="text-2xl font-bold text-navy mb-2">Book a pickup</h1>
-        <p className="text-slate mb-6">No account needed. Our team will confirm your pickup shortly after you submit.</p>
+        <p className="text-slate mb-2">No account needed. Our team will confirm your pickup shortly after you submit.</p>
+        {prefilledFromCalculator && (
+          <p className="text-sm text-orange bg-orange/10 rounded-md p-2 mb-4">
+            Package details carried over from your cost estimate — no need to re-enter them below.
+          </p>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="bg-white rounded-lg p-5 shadow-sm">
@@ -173,12 +197,26 @@ export default function BookPickupPage() {
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Package details</h2>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <input placeholder="Length (cm)" value={lengthCm} onChange={e => setLengthCm(e.target.value)} className="border rounded-md px-3 py-2" />
-              <input placeholder="Width (cm)" value={widthCm} onChange={e => setWidthCm(e.target.value)} className="border rounded-md px-3 py-2" />
-              <input placeholder="Height (cm)" value={heightCm} onChange={e => setHeightCm(e.target.value)} className="border rounded-md px-3 py-2" />
+            <div className="flex gap-2 mb-3">
+              <button type="button" onClick={() => setCbmMode('dimensions')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'dimensions' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>
+                Enter dimensions
+              </button>
+              <button type="button" onClick={() => setCbmMode('direct')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'direct' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>
+                I know my CBM
+              </button>
             </div>
+            {cbmMode === 'dimensions' ? (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <input placeholder="Length (cm)" value={lengthCm} onChange={e => setLengthCm(e.target.value)} className="border rounded-md px-3 py-2" />
+                <input placeholder="Width (cm)" value={widthCm} onChange={e => setWidthCm(e.target.value)} className="border rounded-md px-3 py-2" />
+                <input placeholder="Height (cm)" value={heightCm} onChange={e => setHeightCm(e.target.value)} className="border rounded-md px-3 py-2" />
+              </div>
+            ) : (
+              <input placeholder="CBM (m³)" value={directCbm} onChange={e => setDirectCbm(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            )}
             <input placeholder="Weight (kg)" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <label className="block text-sm font-medium text-slate mb-1">Number of boxes / items</label>
+            <input type="number" min="1" value={boxCount} onChange={e => setBoxCount(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Package description" value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
