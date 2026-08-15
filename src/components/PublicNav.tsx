@@ -10,7 +10,7 @@ export default function PublicNav() {
         <Link to="/about" className="text-white/80 hover:text-white">About</Link>
         <Link to="/calculator" className="text-white/80 hover:text-white">Calculate cost</Link>
         <Link to="/book-pickup" className="text-white/80 hover:text-white">Book a pickup</Link>
-        <Link to="/track" className="text-white/80 hover:text-white">Track shipment</Link>
+        <Link to="/" className="text-white/80 hover:text-white">Track shipment</Link>
         <Link to="/contact" className="text-white/80 hover:text-white">Contact</Link>
       </div>
     </div>
