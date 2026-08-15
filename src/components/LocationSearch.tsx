@@ -1,32 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import { loadGoogleMapsScript } from '../lib/googleMaps'
 
 type Props = {
   onSelect: (result: { address: string; lat: number; lng: number }) => void
   placeholder?: string
-}
-
-declare global {
-  interface Window {
-    google: any
-    initGooglePlaces?: () => void
-  }
-}
-
-let scriptLoadingPromise: Promise<void> | null = null
-
-function loadGooglePlacesScript(apiKey: string): Promise<void> {
-  if (window.google?.maps?.places) return Promise.resolve()
-  if (scriptLoadingPromise) return scriptLoadingPromise
-
-  scriptLoadingPromise = new Promise((resolve, reject) => {
-    const script = document.createElement('script')
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`
-    script.async = true
-    script.onload = () => resolve()
-    script.onerror = reject
-    document.head.appendChild(script)
-  })
-  return scriptLoadingPromise
 }
 
 export default function LocationSearch({ onSelect, placeholder }: Props) {
@@ -34,9 +11,7 @@ export default function LocationSearch({ onSelect, placeholder }: Props) {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY
-    if (!apiKey) return
-    loadGooglePlacesScript(apiKey).then(() => setReady(true)).catch(() => setReady(false))
+    loadGoogleMapsScript().then(() => setReady(true)).catch(() => setReady(false))
   }, [])
 
   useEffect(() => {
