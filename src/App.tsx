@@ -3,6 +3,11 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
 
 const Home = lazy(() => import('./pages/Home'))
+const AboutPage = lazy(() => import('./pages/AboutPage'))
+const ContactPage = lazy(() => import('./pages/ContactPage'))
+const CalculatorPage = lazy(() => import('./pages/CalculatorPage'))
+const BookPickupPage = lazy(() => import('./pages/BookPickupPage'))
+const BookPickupConfirmedPage = lazy(() => import('./pages/BookPickupConfirmedPage'))
 const TrackPage = lazy(() => import('./pages/TrackPage'))
 const DeliveryProofPage = lazy(() => import('./pages/DeliveryProofPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
@@ -39,6 +44,11 @@ export default function App() {
       <Suspense fallback={<PageLoading />}>
         <Routes>
           <Route path="/" element={<Home />} />
+          <Route path="/about" element={<AboutPage />} />
+          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/calculator" element={<CalculatorPage />} />
+          <Route path="/book-pickup" element={<BookPickupPage />} />
+          <Route path="/book-pickup/confirmed" element={<BookPickupConfirmedPage />} />
           <Route path="/track" element={<TrackPage />} />
           <Route path="/track/:trackingNumber" element={<TrackPage />} />
           <Route path="/track/:trackingNumber/proof" element={<DeliveryProofPage />} />
