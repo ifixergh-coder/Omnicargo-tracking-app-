@@ -1,10 +1,11 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { LayoutDashboard, DollarSign, LogOut, ArrowLeft } from 'lucide-react'
+import { LayoutDashboard, DollarSign, Users, LogOut, ArrowLeft } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const LINKS = [
   { to: '/management', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/management/pricing', label: 'Pricing', icon: DollarSign },
+  { to: '/management/staff', label: 'Staff', icon: Users },
 ]
 
 export default function ManagementNav() {
