@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import LocationSearch from '../components/LocationSearch'
 import PublicNav from '../components/PublicNav'
+import { reverseGeocode } from '../lib/reverseGeocode'
 
 export default function BookPickupPage() {
   const navigate = useNavigate()
@@ -51,7 +52,7 @@ export default function BookPickupPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  function useCurrentLocation(target: 'pickup' | 'destination') {
+  async function useCurrentLocation(target: 'pickup' | 'destination') {
     if (!('geolocation' in navigator)) {
       setError('Your device does not support location sharing.')
       return
@@ -59,16 +60,17 @@ export default function BookPickupPage() {
     const setLocating = target === 'pickup' ? setLocatingPickup : setLocatingDestination
     setLocating(true)
     navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const label = `Current location (${pos.coords.latitude.toFixed(5)}, ${pos.coords.longitude.toFixed(5)})`
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        const address = await reverseGeocode(latitude, longitude)
         if (target === 'pickup') {
-          setPickupLat(pos.coords.latitude)
-          setPickupLng(pos.coords.longitude)
-          setPickupAddress(label)
+          setPickupLat(latitude)
+          setPickupLng(longitude)
+          setPickupAddress(address)
         } else {
-          setDestinationLat(pos.coords.latitude)
-          setDestinationLng(pos.coords.longitude)
-          setDestinationAddress(label)
+          setDestinationLat(latitude)
+          setDestinationLng(longitude)
+          setDestinationAddress(address)
         }
         setLocating(false)
       },
