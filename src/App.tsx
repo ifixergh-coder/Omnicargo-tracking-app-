@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import ProtectedRoute from './components/ProtectedRoute'
+import ManagerRoute from './components/ManagerRoute'
 
 const Home = lazy(() => import('./pages/Home'))
 const AboutPage = lazy(() => import('./pages/AboutPage'))
@@ -26,6 +27,8 @@ const ShipmentInvoice = lazy(() => import('./pages/ShipmentInvoice'))
 const StaffScan = lazy(() => import('./pages/StaffScan'))
 const StaffCustomers = lazy(() => import('./pages/StaffCustomers'))
 const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
+const StaffPricingSettings = lazy(() => import('./pages/StaffPricingSettings'))
+const ManagementDashboard = lazy(() => import('./pages/ManagementDashboard'))
 
 function PageLoading() {
   return (
@@ -69,6 +72,8 @@ export default function App() {
           <Route path="/staff/scan/:trackingNumber" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
           <Route path="/staff/customers" element={<ProtectedRoute><StaffCustomers /></ProtectedRoute>} />
           <Route path="/staff/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
+          <Route path="/management" element={<ProtectedRoute><ManagerRoute><ManagementDashboard /></ManagerRoute></ProtectedRoute>} />
+          <Route path="/management/pricing" element={<ProtectedRoute><ManagerRoute><StaffPricingSettings /></ManagerRoute></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </BrowserRouter>
