@@ -4,7 +4,9 @@ import { generateTrackingNumber } from '../lib/trackingNumber'
 import { calculateCharge } from '../lib/pricing'
 import { resolveCbm } from '../lib/cbmEntry'
 import { findOrCreateCustomer } from '../lib/customers'
+import { reverseGeocode } from '../lib/reverseGeocode'
 import CustomerSearch from '../components/CustomerSearch'
+import LocationSearch from '../components/LocationSearch'
 import StaffNav from '../components/StaffNav'
 import { getPublicPricing, PricingSettings } from '../lib/publicPricing'
 
@@ -23,7 +25,14 @@ export default function StaffBookPickup() {
   const [selectedRecipient, setSelectedRecipient] = useState<Customer | null>(null)
 
   const [pickupLocation, setPickupLocation] = useState('')
+  const [pickupLat, setPickupLat] = useState<number | null>(null)
+  const [pickupLng, setPickupLng] = useState<number | null>(null)
+  const [locatingPickup, setLocatingPickup] = useState(false)
+
   const [destinationAddress, setDestinationAddress] = useState('')
+  const [destinationLat, setDestinationLat] = useState<number | null>(null)
+  const [destinationLng, setDestinationLng] = useState<number | null>(null)
+  const [locatingDestination, setLocatingDestination] = useState(false)
   const [destinationGps, setDestinationGps] = useState('')
   const [packageDescription, setPackageDescription] = useState('')
 
@@ -59,6 +68,36 @@ export default function StaffBookPickup() {
     return calculateCharge(cbm, parseFloat(weightKg) || 0, pricing.price_per_cbm, pricing.included_kg_per_cbm, pricing.extra_kg_rate)
   }, [cbm, weightKg, pricing])
 
+  async function useCurrentLocation(target: 'pickup' | 'destination') {
+    if (!('geolocation' in navigator)) {
+      setError('This device does not support location sharing.')
+      return
+    }
+    const setLocating = target === 'pickup' ? setLocatingPickup : setLocatingDestination
+    setLocating(true)
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude, longitude } = pos.coords
+        const address = await reverseGeocode(latitude, longitude)
+        if (target === 'pickup') {
+          setPickupLat(latitude)
+          setPickupLng(longitude)
+          setPickupLocation(address)
+        } else {
+          setDestinationLat(latitude)
+          setDestinationLng(longitude)
+          setDestinationAddress(address)
+        }
+        setLocating(false)
+      },
+      () => {
+        setError('Could not get the current location. Try searching instead.')
+        setLocating(false)
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    )
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!pricing) return
@@ -76,7 +115,9 @@ export default function StaffBookPickup() {
       sender_name: senderName, sender_phone: senderPhone || null, sender_email: senderEmail || null,
       recipient_name: recipientName, recipient_phone: recipientPhone || null, recipient_email: recipientEmail || null,
       pickup_location: pickupLocation || null,
+      pickup_lat: pickupLat, pickup_lng: pickupLng,
       destination_address: destinationAddress || null, destination_gps: destinationGps || null,
+      destination_lat: destinationLat, destination_lng: destinationLng,
       package_description: packageDescription || null,
       length_cm: parseFloat(lengthCm) || null, width_cm: parseFloat(widthCm) || null, height_cm: parseFloat(heightCm) || null,
       weight_kg: parseFloat(weightKg) || null, cbm: cbm || null, cbm_entry_mode: cbmMode,
@@ -139,9 +180,51 @@ export default function StaffBookPickup() {
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Route</h2>
-            <input placeholder="Pickup location" value={pickupLocation} onChange={e => setPickupLocation(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Delivery address" value={destinationAddress} onChange={e => setDestinationAddress(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Where should we pick up?</h2>
+            <button
+              type="button"
+              onClick={() => useCurrentLocation('pickup')}
+              disabled={locatingPickup}
+              className="w-full bg-navy text-white font-medium py-2.5 rounded-md mb-3 disabled:opacity-50"
+            >
+              {locatingPickup ? 'Getting location…' : 'Use current location'}
+            </button>
+            <p className="text-xs text-slate mb-2 text-center">— or —</p>
+            <LocationSearch
+              placeholder="Search for a landmark or address"
+              onSelect={({ address, lat, lng }) => {
+                setPickupLocation(address)
+                setPickupLat(lat)
+                setPickupLng(lng)
+              }}
+            />
+            {pickupLocation && (
+              <p className="text-sm text-slate mt-2">Pickup: <span className="font-medium text-navy">{pickupLocation}</span></p>
+            )}
+          </section>
+
+          <section className="bg-white rounded-lg p-5 shadow-sm">
+            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Where should we deliver to?</h2>
+            <button
+              type="button"
+              onClick={() => useCurrentLocation('destination')}
+              disabled={locatingDestination}
+              className="w-full bg-navy text-white font-medium py-2.5 rounded-md mb-3 disabled:opacity-50"
+            >
+              {locatingDestination ? 'Getting location…' : 'Use current location'}
+            </button>
+            <p className="text-xs text-slate mb-2 text-center">— or —</p>
+            <LocationSearch
+              placeholder="Search for a landmark or address"
+              onSelect={({ address, lat, lng }) => {
+                setDestinationAddress(address)
+                setDestinationLat(lat)
+                setDestinationLng(lng)
+              }}
+            />
+            {destinationAddress && (
+              <p className="text-sm text-slate mt-2 mb-3">Delivery: <span className="font-medium text-navy">{destinationAddress}</span></p>
+            )}
             <input placeholder="GhanaPostGPS (optional)" value={destinationGps} onChange={e => setDestinationGps(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
