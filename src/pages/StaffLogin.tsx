@@ -28,6 +28,7 @@ export default function StaffLogin() {
           <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" className="w-full bg-orange text-white font-medium py-3 rounded-md">Sign in</button>
+          <a href="/staff/signup" className="block text-center text-sm text-orange underline">New staff member? Sign up</a>
         </form>
       </div>
     </div>
