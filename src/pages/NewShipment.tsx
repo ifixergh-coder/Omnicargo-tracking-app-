@@ -1,8 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { generateTrackingNumber } from '../lib/trackingNumber'
-import { calculateCbm, calculateCharge } from '../lib/pricing'
+import { calculateCharge } from '../lib/pricing'
+import { resolveCbm } from '../lib/cbmEntry'
 import { findOrCreateCustomer } from '../lib/customers'
+import { getPublicPricing, PricingSettings } from '../lib/publicPricing'
 import CustomerSearch from '../components/CustomerSearch'
 import StaffNav from '../components/StaffNav'
 
@@ -20,21 +22,19 @@ export default function NewShipment() {
   const [recipientEmail, setRecipientEmail] = useState('')
   const [selectedRecipient, setSelectedRecipient] = useState<Customer | null>(null)
 
-  const [pickupLocation, setPickupLocation] = useState('')
   const [destinationAddress, setDestinationAddress] = useState('')
   const [destinationGps, setDestinationGps] = useState('')
-  const [packageDescription, setPackageDescription] = useState('')
 
+  const [cbmMode, setCbmMode] = useState<'dimensions' | 'direct'>('dimensions')
+  const [directCbm, setDirectCbm] = useState('')
   const [lengthCm, setLengthCm] = useState('')
   const [widthCm, setWidthCm] = useState('')
   const [heightCm, setHeightCm] = useState('')
   const [weightKg, setWeightKg] = useState('')
   const [boxCount, setBoxCount] = useState('1')
-  const [pricePerCbm, setPricePerCbm] = useState('')
-  const [includedKgPerCbm, setIncludedKgPerCbm] = useState('100')
-  const [extraKgRate, setExtraKgRate] = useState('')
   const [assignedVehicleId, setAssignedVehicleId] = useState('')
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
+  const [pricing, setPricing] = useState<PricingSettings | null>(null)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [created, setCreated] = useState<string | null>(null)
@@ -43,20 +43,22 @@ export default function NewShipment() {
   useEffect(() => {
     supabase.from('vehicles').select('id, label').eq('active', true).order('label')
       .then(({ data }) => setVehicles((data as Vehicle[]) ?? []))
+    getPublicPricing().then(setPricing)
   }, [])
 
-  const cbm = useMemo(() => {
-    const l = parseFloat(lengthCm), w = parseFloat(widthCm), h = parseFloat(heightCm)
-    return (!l || !w || !h) ? 0 : calculateCbm(l, w, h)
-  }, [lengthCm, widthCm, heightCm])
+  const cbm = useMemo(
+    () => resolveCbm(cbmMode, directCbm, lengthCm, widthCm, heightCm),
+    [cbmMode, directCbm, lengthCm, widthCm, heightCm],
+  )
 
-  const pricing = useMemo(() => calculateCharge(
-    cbm, parseFloat(weightKg) || 0, parseFloat(pricePerCbm) || 0,
-    parseFloat(includedKgPerCbm) || 0, parseFloat(extraKgRate) || 0,
-  ), [cbm, weightKg, pricePerCbm, includedKgPerCbm, extraKgRate])
+  const pricingResult = useMemo(() => {
+    if (!pricing) return null
+    return calculateCharge(cbm, parseFloat(weightKg) || 0, pricing.price_per_cbm, pricing.included_kg_per_cbm, pricing.extra_kg_rate)
+  }, [cbm, weightKg, pricing])
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+    if (!pricing) return
     setSaving(true)
     setError(null)
     const trackingNumber = generateTrackingNumber()
@@ -70,15 +72,13 @@ export default function NewShipment() {
       tracking_number: trackingNumber,
       sender_name: senderName, sender_phone: senderPhone || null, sender_email: senderEmail || null,
       recipient_name: recipientName, recipient_phone: recipientPhone || null, recipient_email: recipientEmail || null,
-      pickup_location: pickupLocation || null,
       destination_address: destinationAddress || null, destination_gps: destinationGps || null,
-      package_description: packageDescription || null,
       weight_kg: parseFloat(weightKg) || null, length_cm: parseFloat(lengthCm) || null,
       width_cm: parseFloat(widthCm) || null, height_cm: parseFloat(heightCm) || null,
       box_count: parseInt(boxCount) || 1,
-      cbm: cbm || null, price_per_cbm: parseFloat(pricePerCbm) || null,
-      included_kg_per_cbm: parseFloat(includedKgPerCbm) || null, extra_kg_rate: parseFloat(extraKgRate) || null,
-      total_charge: pricing.total || null, status: 'pending',
+      cbm: cbm || null, cbm_entry_mode: cbmMode,
+      price_per_cbm: pricing.price_per_cbm, included_kg_per_cbm: pricing.included_kg_per_cbm, extra_kg_rate: pricing.extra_kg_rate,
+      total_charge: pricingResult?.total || null, status: 'pending',
       assigned_vehicle_id: assignedVehicleId || null,
       sender_customer_id: senderCustomerId, recipient_customer_id: recipientCustomerId,
     }).select()
@@ -134,19 +134,29 @@ export default function NewShipment() {
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Route & package</h2>
-            <input placeholder="Pickup location" value={pickupLocation} onChange={e => setPickupLocation(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Delivery address" value={destinationAddress} onChange={e => setDestinationAddress(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="GhanaPostGPS (optional)" value={destinationGps} onChange={e => setDestinationGps(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Package description (e.g. Documents, Electronics)" value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <input placeholder="GhanaPostGPS (optional)" value={destinationGps} onChange={e => setDestinationGps(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Dimensions & CBM calculator</h2>
-            <div className="grid grid-cols-3 gap-2 mb-2">
-              <input placeholder="Length (cm)" value={lengthCm} onChange={e => setLengthCm(e.target.value)} className="border rounded-md px-3 py-2" />
-              <input placeholder="Width (cm)" value={widthCm} onChange={e => setWidthCm(e.target.value)} className="border rounded-md px-3 py-2" />
-              <input placeholder="Height (cm)" value={heightCm} onChange={e => setHeightCm(e.target.value)} className="border rounded-md px-3 py-2" />
+            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Dimensions & CBM</h2>
+            <div className="flex gap-2 mb-3">
+              <button type="button" onClick={() => setCbmMode('dimensions')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'dimensions' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>
+                Enter dimensions
+              </button>
+              <button type="button" onClick={() => setCbmMode('direct')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'direct' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>
+                I know the CBM
+              </button>
             </div>
+            {cbmMode === 'dimensions' ? (
+              <div className="grid grid-cols-3 gap-2 mb-2">
+                <input placeholder="Length (cm)" value={lengthCm} onChange={e => setLengthCm(e.target.value)} className="border rounded-md px-3 py-2" />
+                <input placeholder="Width (cm)" value={widthCm} onChange={e => setWidthCm(e.target.value)} className="border rounded-md px-3 py-2" />
+                <input placeholder="Height (cm)" value={heightCm} onChange={e => setHeightCm(e.target.value)} className="border rounded-md px-3 py-2" />
+              </div>
+            ) : (
+              <input placeholder="CBM (m³)" value={directCbm} onChange={e => setDirectCbm(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            )}
             <p className="text-sm text-slate mb-3">CBM: <span className="font-semibold text-navy">{cbm.toFixed(4)} m³</span></p>
             <input placeholder="Weight (kg)" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
@@ -159,18 +169,17 @@ export default function NewShipment() {
             </p>
           </section>
 
-          <section className="bg-white rounded-lg p-5 shadow-sm">
-            <h2 className="text-sm font-semibold text-slate uppercase mb-3">Pricing</h2>
-            <input placeholder="Price per CBM (GHS)" value={pricePerCbm} onChange={e => setPricePerCbm(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Included kg per CBM" value={includedKgPerCbm} onChange={e => setIncludedKgPerCbm(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Extra rate per kg over allowance (GHS)" value={extraKgRate} onChange={e => setExtraKgRate(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-3" />
-            <div className="bg-gray-50 rounded-md p-3 text-sm space-y-1">
-              <p>Base charge (CBM × rate): GHS {pricing.baseCharge.toFixed(2)}</p>
-              <p>Excess weight: {pricing.excessWeightKg.toFixed(2)} kg</p>
-              <p>Excess charge: GHS {pricing.excessCharge.toFixed(2)}</p>
-              <p className="font-semibold text-navy">Total: GHS {pricing.total.toFixed(2)}</p>
-            </div>
-          </section>
+          {pricingResult && (
+            <section className="bg-white rounded-lg p-5 shadow-sm">
+              <h2 className="text-sm font-semibold text-slate uppercase mb-3">Pricing (from management rates)</h2>
+              <div className="bg-gray-50 rounded-md p-3 text-sm space-y-1">
+                <p>Base charge (CBM × rate): GHS {pricingResult.baseCharge.toFixed(2)}</p>
+                <p>Excess weight: {pricingResult.excessWeightKg.toFixed(2)} kg</p>
+                <p>Excess charge: GHS {pricingResult.excessCharge.toFixed(2)}</p>
+                <p className="font-semibold text-navy">Total: GHS {pricingResult.total.toFixed(2)}</p>
+              </div>
+            </section>
+          )}
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Vehicle (optional)</h2>
