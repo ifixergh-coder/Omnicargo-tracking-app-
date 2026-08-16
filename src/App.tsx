@@ -13,6 +13,7 @@ const TrackPage = lazy(() => import('./pages/TrackPage'))
 const DeliveryProofPage = lazy(() => import('./pages/DeliveryProofPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
 const DriverBatch = lazy(() => import('./pages/DriverBatch'))
+const DriverRoute = lazy(() => import('./pages/DriverRoute'))
 const DriverSignup = lazy(() => import('./pages/DriverSignup'))
 const DriverLogin = lazy(() => import('./pages/DriverLogin'))
 const StaffLogin = lazy(() => import('./pages/StaffLogin'))
@@ -61,6 +62,7 @@ export default function App() {
           <Route path="/track/:trackingNumber/proof" element={<DeliveryProofPage />} />
           <Route path="/driver" element={<ProtectedRoute><DriverPage /></ProtectedRoute>} />
           <Route path="/driver/batch" element={<ProtectedRoute><DriverBatch /></ProtectedRoute>} />
+          <Route path="/driver/route" element={<ProtectedRoute><DriverRoute /></ProtectedRoute>} />
           <Route path="/driver/signup" element={<DriverSignup />} />
           <Route path="/driver/login" element={<DriverLogin />} />
           <Route path="/staff/login" element={<StaffLogin />} />
