@@ -15,22 +15,21 @@ export default function StaffSignup() {
     setSaving(true)
     setError(null)
 
-    if (referenceCode.trim()) {
-      const { data: codeRow } = await supabase
-        .from('staff_signup_codes')
-        .select('code, used_by')
-        .eq('code', referenceCode.trim())
-        .maybeSingle()
-      if (!codeRow) {
-        setError('That reference code was not recognized.')
-        setSaving(false)
-        return
-      }
-      if (codeRow.used_by) {
-        setError('That reference code has already been used.')
-        setSaving(false)
-        return
-      }
+    const { data: codeRow } = await supabase
+      .from('staff_signup_codes')
+      .select('code, used_by')
+      .eq('code', referenceCode.trim())
+      .maybeSingle()
+
+    if (!codeRow) {
+      setError('That reference code was not recognized. Ask a manager for a valid code.')
+      setSaving(false)
+      return
+    }
+    if (codeRow.used_by) {
+      setError('That reference code has already been used.')
+      setSaving(false)
+      return
     }
 
     const { data, error: signUpError } = await supabase.auth.signUp({ email, password })
@@ -44,14 +43,12 @@ export default function StaffSignup() {
       user_id: data.user.id,
       full_name: fullName,
       email,
-      reference_code_used: referenceCode.trim() || null,
+      reference_code_used: referenceCode.trim(),
     })
 
-    if (referenceCode.trim()) {
-      await supabase.from('staff_signup_codes')
-        .update({ used_by: data.user.id, used_at: new Date().toISOString() })
-        .eq('code', referenceCode.trim())
-    }
+    await supabase.from('staff_signup_codes')
+      .update({ used_by: data.user.id, used_at: new Date().toISOString() })
+      .eq('code', referenceCode.trim())
 
     setDone(true)
     setSaving(false)
@@ -80,7 +77,7 @@ export default function StaffSignup() {
           <input placeholder="Full name" value={fullName} onChange={e => setFullName(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           <input type="password" placeholder="Password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
-          <input placeholder="Reference code (if given one)" value={referenceCode} onChange={e => setReferenceCode(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
+          <input placeholder="Reference code (required — ask a manager)" value={referenceCode} onChange={e => setReferenceCode(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           {error && <p className="text-sm text-red-600">{error}</p>}
           <button type="submit" disabled={saving} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-50">
             {saving ? 'Submitting…' : 'Sign up'}
