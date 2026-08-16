@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { Html5Qrcode } from 'html5-qrcode'
 import { supabase } from '../lib/supabase'
+import { generateBatchNumber } from '../lib/batchNumber'
 import { STATUS_OPTIONS, STATUS_LABELS } from '../lib/statusLabels'
 
 type Shipment = {
@@ -23,6 +24,7 @@ type Shipment = {
   weight_kg: number | null
   cbm: number | null
   status: string
+  batch_id: string | null
 }
 
 type DeliveryProof = { id: number; photo_path: string; delivery_type: string; recipient_note: string | null; created_at: string }
@@ -40,16 +42,29 @@ function playScanFeedback() {
     gain.connect(ctx.destination)
     osc.start()
     osc.stop(ctx.currentTime + 0.08)
-  } catch {
-    // audio not supported, ignore
-  }
-  if ('vibrate' in navigator) {
-    navigator.vibrate(80) // no effect on iOS Safari, which doesn't support this API
-  }
+  } catch {}
+  if ('vibrate' in navigator) navigator.vibrate(80)
 }
 
 function mapsLink(lat: number, lng: number) {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`
+}
+
+async function getOrCreateTodaysBatchForCurrentDriver(): Promise<string | null> {
+  const { data: userData } = await supabase.auth.getUser()
+  if (!userData.user) return null
+
+  const { data: vehicle } = await supabase.from('vehicles').select('id').eq('driver_user_id', userData.user.id).maybeSingle()
+  if (!vehicle) return null
+
+  const today = new Date().toISOString().slice(0, 10)
+  const { data: existing } = await supabase.from('batches').select('id').eq('driver_vehicle_id', vehicle.id).eq('batch_date', today).maybeSingle()
+  if (existing) return existing.id
+
+  const { data: created } = await supabase.from('batches').insert({
+    batch_number: generateBatchNumber(), driver_vehicle_id: vehicle.id, batch_date: today, status: 'picked_up',
+  }).select()
+  return created?.[0]?.id ?? null
 }
 
 export default function StaffScan() {
@@ -122,9 +137,7 @@ export default function StaffScan() {
           const url = new URL(decodedText)
           const parts = url.pathname.split('/')
           extracted = parts[parts.length - 1]
-        } catch {
-          // not a URL, use raw text
-        }
+        } catch {}
         try { await scanner.stop(); await scanner.clear() } catch {}
         window.location.href = `/staff/scan/${extracted}`
       },
@@ -164,6 +177,16 @@ export default function StaffScan() {
       })
     }
 
+    // Picking up: auto-add this item to the driver's batch for today
+    let updatedBatchId = shipment.batch_id
+    if (selectedStatus === 'picked_up' && !shipment.batch_id) {
+      const batchId = await getOrCreateTodaysBatchForCurrentDriver()
+      if (batchId) {
+        await supabase.from('shipments').update({ batch_id: batchId }).eq('id', shipment.id)
+        updatedBatchId = batchId
+      }
+    }
+
     const { error: updateError } = await supabase.from('shipments').update({ status: selectedStatus }).eq('id', shipment.id)
 
     if (updateError) {
@@ -175,9 +198,13 @@ export default function StaffScan() {
     }
 
     await supabase.from('status_events').insert({ shipment_id: shipment.id, status: selectedStatus, updated_by_email: currentUserEmail })
-    setShipment({ ...shipment, status: selectedStatus })
+    setShipment({ ...shipment, status: selectedStatus, batch_id: updatedBatchId })
     setUpdating(false)
-    setSavedMessage(`Status updated to "${STATUS_LABELS[selectedStatus]}"`)
+    setSavedMessage(
+      selectedStatus === 'delivered'
+        ? `Delivered — this item has left today's batch.`
+        : `Status updated to "${STATUS_LABELS[selectedStatus]}"`
+    )
     setProofPhoto(null)
     setTimeout(() => setSavedMessage(null), 4000)
   }
@@ -201,7 +228,10 @@ export default function StaffScan() {
     return (
       <div className="min-h-screen bg-gray-50 px-6 py-8">
         <div className="max-w-md mx-auto">
-          <Link to="/staff/scan" className="text-orange underline text-sm">← Scan another</Link>
+          <div className="flex justify-between items-center">
+            <Link to="/staff/scan" className="text-orange underline text-sm">← Scan another</Link>
+            <a href="/driver/batch" className="text-orange underline text-sm">Today's batch</a>
+          </div>
           <div className="bg-white rounded-lg shadow-sm p-5 mt-4">
             <p className="font-mono font-bold text-lg text-navy mb-1">{shipment.tracking_number}</p>
             {currentUserEmail && <p className="text-xs text-slate mb-3">Logged in as {currentUserEmail}</p>}
@@ -226,14 +256,7 @@ export default function StaffScan() {
                 <p className="text-xs font-semibold text-slate uppercase mb-1">Pickup location</p>
                 {shipment.pickup_location && <p className="text-sm text-slate">{shipment.pickup_location}</p>}
                 {shipment.pickup_lat != null && shipment.pickup_lng != null && (
-                  <a
-                    href={mapsLink(shipment.pickup_lat, shipment.pickup_lng)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-orange underline"
-                  >
-                    Open in Google Maps
-                  </a>
+                  <a href={mapsLink(shipment.pickup_lat, shipment.pickup_lng)} target="_blank" rel="noopener noreferrer" className="text-sm text-orange underline">Open in Google Maps</a>
                 )}
               </div>
             )}
@@ -244,14 +267,7 @@ export default function StaffScan() {
                 {shipment.destination_address && <p className="text-sm text-slate">{shipment.destination_address}</p>}
                 {shipment.destination_gps && <p className="text-xs text-slate">GPS: {shipment.destination_gps}</p>}
                 {shipment.destination_lat != null && shipment.destination_lng != null && (
-                  <a
-                    href={mapsLink(shipment.destination_lat, shipment.destination_lng)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-orange underline"
-                  >
-                    Open in Google Maps
-                  </a>
+                  <a href={mapsLink(shipment.destination_lat, shipment.destination_lng)} target="_blank" rel="noopener noreferrer" className="text-sm text-orange underline">Open in Google Maps</a>
                 )}
               </div>
             )}
@@ -306,7 +322,7 @@ export default function StaffScan() {
 
                   {needsPhoto && (
                     <p className="text-xs text-orange bg-orange/10 rounded-md p-2 mb-3">
-                      ⚠ Marking as delivered locks this shipment permanently. Double-check the photo before confirming.
+                      ⚠ Marking as delivered locks this shipment permanently and removes it from today's batch.
                     </p>
                   )}
 
