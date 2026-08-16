@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import mapboxgl from 'mapbox-gl'
 import { supabase } from '../lib/supabase'
 import { STATUS_LABELS } from '../lib/statusLabels'
@@ -16,12 +16,8 @@ type Shipment = {
   assigned_vehicle_id: string | null
 }
 
-type StatusEvent = {
-  id: number
-  status: string
-  note: string | null
-  created_at: string
-}
+type StatusEvent = { id: number; status: string; note: string | null; created_at: string }
+type LocationPoint = { lat: number; lng: number }
 
 export default function TrackPage() {
   const { trackingNumber } = useParams()
@@ -29,6 +25,7 @@ export default function TrackPage() {
   const mapContainer = useRef<HTMLDivElement>(null)
   const map = useRef<mapboxgl.Map | null>(null)
   const marker = useRef<mapboxgl.Marker | null>(null)
+  const animationFrame = useRef<number | null>(null)
 
   const [shipment, setShipment] = useState<Shipment | null>(null)
   const [events, setEvents] = useState<StatusEvent[]>([])
@@ -36,11 +33,7 @@ export default function TrackPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!trackingNumber) {
-      setNotFound(true)
-      setLoading(false)
-      return
-    }
+    if (!trackingNumber) { setNotFound(true); setLoading(false); return }
     setLoading(true)
     setNotFound(false)
 
@@ -55,12 +48,7 @@ export default function TrackPage() {
           else setShipment(data as Shipment)
           setLoading(false)
         },
-        () => {
-          // Guarantees the page never hangs on "Looking up shipment…" forever,
-          // even if something unexpected breaks the request itself
-          setNotFound(true)
-          setLoading(false)
-        },
+        () => { setNotFound(true); setLoading(false) },
       )
   }, [trackingNumber])
 
@@ -77,16 +65,14 @@ export default function TrackPage() {
     return () => { supabase.removeChannel(channel) }
   }, [shipment?.id])
 
+  // Live map while in transit
   useEffect(() => {
     if (!shipment?.assigned_vehicle_id || !mapContainer.current) return
+    const showMap = ['picked_up', 'in_transit', 'arrived_at_facility', 'out_for_delivery'].includes(shipment.status)
+    if (!showMap) return
 
     if (!map.current) {
-      map.current = new mapboxgl.Map({
-        container: mapContainer.current,
-        style: 'mapbox://styles/mapbox/light-v11',
-        center: [0, 0],
-        zoom: 12,
-      })
+      map.current = new mapboxgl.Map({ container: mapContainer.current, style: 'mapbox://styles/mapbox/light-v11', center: [0, 0], zoom: 12 })
     }
 
     supabase.from('location_updates').select('lat, lng').eq('vehicle_id', shipment.assigned_vehicle_id)
@@ -112,7 +98,85 @@ export default function TrackPage() {
       .subscribe()
 
     return () => { supabase.removeChannel(channel) }
-  }, [shipment?.assigned_vehicle_id])
+  }, [shipment?.assigned_vehicle_id, shipment?.status])
+
+  // Animated route replay once delivered — uses the actual breadcrumb trail
+  // of GPS points captured during the trip, simplified into a line, with the
+  // marker animated moving from the first point to the last
+  useEffect(() => {
+    if (!shipment || shipment.status !== 'delivered' || !shipment.assigned_vehicle_id || !mapContainer.current) return
+
+    async function buildAnimatedRoute() {
+      const { data: points } = await supabase
+        .from('location_updates')
+        .select('lat, lng, recorded_at')
+        .eq('vehicle_id', shipment!.assigned_vehicle_id)
+        .order('recorded_at', { ascending: true })
+        .limit(500)
+
+      if (!points || points.length < 2) return
+
+      // Thin the trail down to a manageable number of points for a clean line
+      const step = Math.max(1, Math.floor(points.length / 50))
+      const path: LocationPoint[] = points.filter((_, i) => i % step === 0).map((p) => ({ lat: p.lat, lng: p.lng }))
+
+      if (!map.current) {
+        map.current = new mapboxgl.Map({
+          container: mapContainer.current!,
+          style: 'mapbox://styles/mapbox/light-v11',
+          center: [path[0].lng, path[0].lat],
+          zoom: 12,
+        })
+      }
+
+      map.current.on('load', () => drawRoute(path))
+      if (map.current.isStyleLoaded()) drawRoute(path)
+    }
+
+    function drawRoute(path: LocationPoint[]) {
+      const coords = path.map((p) => [p.lng, p.lat])
+
+      if (!map.current!.getSource('route')) {
+        map.current!.addSource('route', {
+          type: 'geojson',
+          data: { type: 'Feature', properties: {}, geometry: { type: 'LineString', coordinates: coords } },
+        })
+        map.current!.addLayer({
+          id: 'route-line',
+          type: 'line',
+          source: 'route',
+          paint: { 'line-color': '#0F2A4A', 'line-width': 3, 'line-dasharray': [1, 2] },
+        })
+      }
+
+      const bounds = coords.reduce(
+        (b, c) => b.extend(c as [number, number]),
+        new mapboxgl.LngLatBounds(coords[0] as [number, number], coords[0] as [number, number]),
+      )
+      map.current!.fitBounds(bounds, { padding: 40 })
+
+      // Simple truck emoji marker, animated stepping along the route
+      const el = document.createElement('div')
+      el.style.fontSize = '28px'
+      el.textContent = '🚚'
+      const truckMarker = new mapboxgl.Marker({ element: el }).setLngLat(coords[0] as [number, number]).addTo(map.current!)
+
+      let i = 0
+      function step() {
+        if (i >= coords.length) return
+        truckMarker.setLngLat(coords[i] as [number, number])
+        i++
+        animationFrame.current = window.setTimeout(step, 120) as unknown as number
+      }
+      step()
+    }
+
+    buildAnimatedRoute()
+
+    return () => {
+      if (animationFrame.current) clearTimeout(animationFrame.current)
+    }
+  }, [shipment?.status, shipment?.assigned_vehicle_id])
 
   if (loading) return <div className="min-h-screen flex items-center justify-center text-slate">Looking up shipment…</div>
 
@@ -127,7 +191,7 @@ export default function TrackPage() {
 
   if (!shipment) return null
 
-  const showMap = ['picked_up', 'in_transit', 'arrived_at_facility', 'out_for_delivery'].includes(shipment.status)
+  const showMap = ['picked_up', 'in_transit', 'arrived_at_facility', 'out_for_delivery', 'delivered'].includes(shipment.status)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -146,6 +210,12 @@ export default function TrackPage() {
           <p className="text-xs uppercase tracking-wide text-slate mb-1">Status</p>
           <p className="text-lg font-semibold text-navy">{STATUS_LABELS[shipment.status] ?? shipment.status}</p>
           {shipment.destination_address && <p className="text-sm text-slate mt-2">Delivering to: {shipment.destination_address}</p>}
+
+          {shipment.status === 'delivered' && (
+            <Link to={`/track/${shipment.tracking_number}/proof`} className="inline-block mt-3 text-sm text-orange underline">
+              View delivery photo
+            </Link>
+          )}
         </div>
 
         <div className="bg-white rounded-lg shadow-sm p-5">
