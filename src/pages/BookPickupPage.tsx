@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import LocationSearch from '../components/LocationSearch'
+import ContactPickerButton from '../components/ContactPickerButton'
 import PublicNav from '../components/PublicNav'
 import { reverseGeocode } from '../lib/reverseGeocode'
 
@@ -130,6 +131,7 @@ export default function BookPickupPage() {
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Your details (sender)</h2>
+            <ContactPickerButton onSelect={(name, phone) => { setSenderName(name); setSenderPhone(phone) }} />
             <input placeholder="Your name" value={senderName} onChange={e => setSenderName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Your phone number" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Your email (optional)" value={senderEmail} onChange={e => setSenderEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
@@ -137,6 +139,7 @@ export default function BookPickupPage() {
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Recipient details</h2>
+            <ContactPickerButton onSelect={(name, phone) => { setRecipientName(name); setRecipientPhone(phone) }} />
             <input placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Recipient email (optional)" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
@@ -144,68 +147,31 @@ export default function BookPickupPage() {
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Where should we pick up?</h2>
-            <button
-              type="button"
-              onClick={() => useCurrentLocation('pickup')}
-              disabled={locatingPickup}
-              className="w-full bg-navy text-white font-medium py-2.5 rounded-md mb-3 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => useCurrentLocation('pickup')} disabled={locatingPickup} className="w-full bg-navy text-white font-medium py-2.5 rounded-md mb-3 disabled:opacity-50">
               {locatingPickup ? 'Getting your location…' : 'Use my current location'}
             </button>
             <p className="text-xs text-slate mb-2 text-center">— or —</p>
-            <LocationSearch
-              placeholder="Search for a landmark or address"
-              onSelect={({ address, lat, lng }) => {
-                setPickupAddress(address)
-                setPickupLat(lat)
-                setPickupLng(lng)
-              }}
-            />
-            {pickupAddress && (
-              <p className="text-sm text-slate mt-2">Pickup location: <span className="font-medium text-navy">{pickupAddress}</span></p>
-            )}
+            <LocationSearch placeholder="Search for a landmark or address" onSelect={({ address, lat, lng }) => { setPickupAddress(address); setPickupLat(lat); setPickupLng(lng) }} />
+            {pickupAddress && <p className="text-sm text-slate mt-2">Pickup location: <span className="font-medium text-navy">{pickupAddress}</span></p>}
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Where should we deliver to?</h2>
             <p className="text-xs text-slate mb-3">If you're booking on the recipient's behalf, you can use their current location too.</p>
-            <button
-              type="button"
-              onClick={() => useCurrentLocation('destination')}
-              disabled={locatingDestination}
-              className="w-full bg-navy text-white font-medium py-2.5 rounded-md mb-3 disabled:opacity-50"
-            >
+            <button type="button" onClick={() => useCurrentLocation('destination')} disabled={locatingDestination} className="w-full bg-navy text-white font-medium py-2.5 rounded-md mb-3 disabled:opacity-50">
               {locatingDestination ? 'Getting location…' : 'Use current location'}
             </button>
             <p className="text-xs text-slate mb-2 text-center">— or —</p>
-            <LocationSearch
-              placeholder="Search for a landmark or address"
-              onSelect={({ address, lat, lng }) => {
-                setDestinationAddress(address)
-                setDestinationLat(lat)
-                setDestinationLng(lng)
-              }}
-            />
-            {destinationAddress && (
-              <p className="text-sm text-slate mt-2 mb-3">Delivery location: <span className="font-medium text-navy">{destinationAddress}</span></p>
-            )}
-            <input
-              placeholder="GhanaPostGPS (optional)"
-              value={destinationGps}
-              onChange={e => setDestinationGps(e.target.value)}
-              className="w-full border rounded-md px-3 py-2"
-            />
+            <LocationSearch placeholder="Search for a landmark or address" onSelect={({ address, lat, lng }) => { setDestinationAddress(address); setDestinationLat(lat); setDestinationLng(lng) }} />
+            {destinationAddress && <p className="text-sm text-slate mt-2 mb-3">Delivery location: <span className="font-medium text-navy">{destinationAddress}</span></p>}
+            <input placeholder="GhanaPostGPS (optional)" value={destinationGps} onChange={e => setDestinationGps(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Package details</h2>
             <div className="flex gap-2 mb-3">
-              <button type="button" onClick={() => setCbmMode('dimensions')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'dimensions' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>
-                Enter dimensions
-              </button>
-              <button type="button" onClick={() => setCbmMode('direct')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'direct' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>
-                I know my CBM
-              </button>
+              <button type="button" onClick={() => setCbmMode('dimensions')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'dimensions' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>Enter dimensions</button>
+              <button type="button" onClick={() => setCbmMode('direct')} className={`flex-1 py-2 rounded-md text-sm font-medium ${cbmMode === 'direct' ? 'bg-navy text-white' : 'bg-gray-100 text-slate'}`}>I know my CBM</button>
             </div>
             {cbmMode === 'dimensions' ? (
               <div className="grid grid-cols-3 gap-2 mb-2">
@@ -223,7 +189,6 @@ export default function BookPickupPage() {
           </section>
 
           {error && <p className="text-sm text-red-600">{error}</p>}
-
           <button type="submit" disabled={saving || !pickupAddress} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-50">
             {saving ? 'Submitting…' : 'Request pickup'}
           </button>
