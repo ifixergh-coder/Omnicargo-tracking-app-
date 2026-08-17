@@ -14,8 +14,15 @@ const DeliveryProofPage = lazy(() => import('./pages/DeliveryProofPage'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
 const DriverBatch = lazy(() => import('./pages/DriverBatch'))
 const DriverRoute = lazy(() => import('./pages/DriverRoute'))
+const DriverDashboard = lazy(() => import('./pages/DriverDashboard'))
+const DriverProfile = lazy(() => import('./pages/DriverProfile'))
 const DriverSignup = lazy(() => import('./pages/DriverSignup'))
 const DriverLogin = lazy(() => import('./pages/DriverLogin'))
+const CustomerSignup = lazy(() => import('./pages/CustomerSignup'))
+const CustomerLogin = lazy(() => import('./pages/CustomerLogin'))
+const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard'))
+const CustomerAddresses = lazy(() => import('./pages/CustomerAddresses'))
+const CustomerProfile = lazy(() => import('./pages/CustomerProfile'))
 const StaffLogin = lazy(() => import('./pages/StaffLogin'))
 const StaffSignup = lazy(() => import('./pages/StaffSignup'))
 const StaffShipments = lazy(() => import('./pages/StaffShipments'))
@@ -60,11 +67,21 @@ export default function App() {
           <Route path="/track" element={<TrackPage />} />
           <Route path="/track/:trackingNumber" element={<TrackPage />} />
           <Route path="/track/:trackingNumber/proof" element={<DeliveryProofPage />} />
+
+          <Route path="/account" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
+          <Route path="/account/addresses" element={<ProtectedRoute><CustomerAddresses /></ProtectedRoute>} />
+          <Route path="/account/profile" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+          <Route path="/account/signup" element={<CustomerSignup />} />
+          <Route path="/account/login" element={<CustomerLogin />} />
+
           <Route path="/driver" element={<ProtectedRoute><DriverPage /></ProtectedRoute>} />
+          <Route path="/driver/dashboard" element={<ProtectedRoute><DriverDashboard /></ProtectedRoute>} />
+          <Route path="/driver/profile" element={<ProtectedRoute><DriverProfile /></ProtectedRoute>} />
           <Route path="/driver/batch" element={<ProtectedRoute><DriverBatch /></ProtectedRoute>} />
           <Route path="/driver/route" element={<ProtectedRoute><DriverRoute /></ProtectedRoute>} />
           <Route path="/driver/signup" element={<DriverSignup />} />
           <Route path="/driver/login" element={<DriverLogin />} />
+
           <Route path="/staff/login" element={<StaffLogin />} />
           <Route path="/staff/signup" element={<StaffSignup />} />
           <Route path="/staff/shipments" element={<ProtectedRoute><StaffShipments /></ProtectedRoute>} />
@@ -81,6 +98,7 @@ export default function App() {
           <Route path="/staff/scan/:trackingNumber" element={<ProtectedRoute><StaffScan /></ProtectedRoute>} />
           <Route path="/staff/customers" element={<ProtectedRoute><StaffCustomers /></ProtectedRoute>} />
           <Route path="/staff/customers/:id" element={<ProtectedRoute><CustomerDetail /></ProtectedRoute>} />
+
           <Route path="/management" element={<ProtectedRoute><ManagerRoute><ManagementDashboard /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/pricing" element={<ProtectedRoute><ManagerRoute><StaffPricingSettings /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/staff" element={<ProtectedRoute><ManagerRoute><ManagementStaff /></ManagerRoute></ProtectedRoute>} />
