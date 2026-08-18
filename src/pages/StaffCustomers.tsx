@@ -31,10 +31,15 @@ export default function StaffCustomers() {
         {loading && <p className="text-sm text-slate">Loading…</p>}
         <div className="space-y-2">
           {customers.map((c) => (
-            <Link key={c.id} to={`/staff/customers/${c.id}`} className="block bg-white rounded-lg shadow-sm p-4">
-              <p className="font-medium text-navy">{c.name}</p>
-              <p className="text-sm text-slate">{c.phone} {c.email && `· ${c.email}`}</p>
-            </Link>
+            <div key={c.id} className="bg-white rounded-lg shadow-sm p-4 flex items-center justify-between">
+              <div>
+                <p className="font-medium text-navy">{c.name}</p>
+                <p className="text-sm text-slate">{c.phone} {c.email && `· ${c.email}`}</p>
+              </div>
+              <Link to={`/staff/customers/${c.id}`} className="bg-orange text-white text-sm font-medium px-4 py-2 rounded-md shrink-0">
+                View details
+              </Link>
+            </div>
           ))}
           {!loading && customers.length === 0 && <p className="text-sm text-slate">No customers found.</p>}
         </div>
