@@ -36,11 +36,11 @@ export default function CustomerDashboard() {
     <div className="min-h-screen bg-gray-50">
       <CustomerNav />
       <div className="max-w-2xl mx-auto px-6">
-        <h1 className="text-xl font-semibold text-navy mb-4">My orders</h1>
-        <p className="text-xs text-slate mb-4">Your order history stays available in your account.</p>
+        <h1 className="text-xl font-semibold text-navy mb-4">My shipments</h1>
+        <p className="text-xs text-slate mb-4">Your shipment history stays available in your account.</p>
 
         {loading && <p className="text-sm text-slate">Loading…</p>}
-        {!loading && orders.length === 0 && <p className="text-sm text-slate">No orders placed while logged in yet.</p>}
+        {!loading && orders.length === 0 && <p className="text-sm text-slate">No shipments placed while logged in yet.</p>}
 
         <div className="space-y-2">
           {orders.map((o) => (
