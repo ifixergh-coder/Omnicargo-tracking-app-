@@ -2,7 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
 const LINKS = [
-  { to: '/account', label: 'My orders' },
+  { to: '/account', label: 'My shipments' },
   { to: '/account/addresses', label: 'Saved addresses' },
   { to: '/account/profile', label: 'Profile' },
 ]
