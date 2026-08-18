@@ -11,6 +11,7 @@ const BookPickupPage = lazy(() => import('./pages/BookPickupPage'))
 const BookPickupConfirmedPage = lazy(() => import('./pages/BookPickupConfirmedPage'))
 const TrackPage = lazy(() => import('./pages/TrackPage'))
 const DeliveryProofPage = lazy(() => import('./pages/DeliveryProofPage'))
+const LoginHub = lazy(() => import('./pages/LoginHub'))
 const DriverPage = lazy(() => import('./pages/DriverPage'))
 const DriverBatch = lazy(() => import('./pages/DriverBatch'))
 const DriverRoute = lazy(() => import('./pages/DriverRoute'))
@@ -67,6 +68,7 @@ export default function App() {
           <Route path="/track" element={<TrackPage />} />
           <Route path="/track/:trackingNumber" element={<TrackPage />} />
           <Route path="/track/:trackingNumber/proof" element={<DeliveryProofPage />} />
+          <Route path="/login" element={<LoginHub />} />
 
           <Route path="/account" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
           <Route path="/account/addresses" element={<ProtectedRoute><CustomerAddresses /></ProtectedRoute>} />
