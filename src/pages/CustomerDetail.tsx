@@ -19,6 +19,8 @@ export default function CustomerDetail() {
   const [email, setEmail] = useState('')
   const [saving, setSaving] = useState(false)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   function loadData() {
     if (!id) return
@@ -49,7 +51,14 @@ export default function CustomerDetail() {
 
   async function handleDelete() {
     if (!id) return
-    await supabase.from('customers').delete().eq('id', id)
+    setDeleting(true)
+    setDeleteError(null)
+    const { error } = await supabase.from('customers').delete().eq('id', id)
+    setDeleting(false)
+    if (error) {
+      setDeleteError(error.message)
+      return
+    }
     navigate('/staff/customers')
   }
 
@@ -83,11 +92,14 @@ export default function CustomerDetail() {
               {confirmingDelete && (
                 <div className="mt-3 bg-red-50 border border-red-200 rounded-md p-3">
                   <p className="text-sm text-red-800 mb-2">
-                    Delete this customer record? This does not delete their past shipments, only their saved contact card.
+                    Delete this customer record? This does not delete their past shipments — those stay in the system, just no longer linked to a saved contact card.
                   </p>
+                  {deleteError && <p className="text-xs text-red-700 mb-2">Error: {deleteError}</p>}
                   <div className="flex gap-2">
-                    <button onClick={() => setConfirmingDelete(false)} className="flex-1 border border-gray-300 text-slate text-xs py-2 rounded-md">Cancel</button>
-                    <button onClick={handleDelete} className="flex-1 bg-red-600 text-white text-xs py-2 rounded-md">Confirm delete</button>
+                    <button onClick={() => { setConfirmingDelete(false); setDeleteError(null) }} className="flex-1 border border-gray-300 text-slate text-xs py-2 rounded-md">Cancel</button>
+                    <button onClick={handleDelete} disabled={deleting} className="flex-1 bg-red-600 text-white text-xs py-2 rounded-md disabled:opacity-50">
+                      {deleting ? 'Deleting…' : 'Confirm delete'}
+                    </button>
                   </div>
                 </div>
               )}
