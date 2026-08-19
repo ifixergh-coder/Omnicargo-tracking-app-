@@ -77,7 +77,8 @@ export default function DailyWaybill() {
             <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-10" />
             <div className="text-right text-sm text-slate">
               <p className="font-semibold text-navy">OMNICARGO SOLUTIONS LTD</p>
-              <p>Tel: [phone] · Email: [email]</p>
+              <p>Tel: +233535198367</p>
+              <p className="text-xs">PCSRC License No: CLN127461221 · TIN: C0063468905</p>
             </div>
           </div>
 
