@@ -37,7 +37,8 @@ export default function ShipmentInvoice() {
         <div className="text-center mb-6 border-b-2 border-navy pb-4">
           <h1 className="text-2xl font-bold text-navy">OMNICARGO SOLUTIONS LTD</h1>
           <p className="text-sm text-slate mt-1">Tema / Accra, Ghana</p>
-          <p className="text-sm text-slate">Tel: [phone] · Email: [email]</p>
+          <p className="text-sm text-slate">Tel: +233535198367</p>
+          <p className="text-xs text-slate mt-1">PCSRC License No: CLN127461221 · TIN: C0063468905</p>
         </div>
 
         <h2 className="text-lg font-semibold text-navy mb-4">Shipping Invoice</h2>
