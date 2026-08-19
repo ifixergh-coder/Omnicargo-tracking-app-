@@ -44,14 +44,15 @@ export default function CustomerDashboard() {
 
         <div className="space-y-2">
           {orders.map((o) => (
-            <Link key={o.id} to={`/track/${o.tracking_number}`} className="block bg-white rounded-lg shadow-sm p-4">
+            <div key={o.id} className="bg-white rounded-lg shadow-sm p-4">
               <p className="font-mono text-navy font-medium">{o.tracking_number}</p>
               <p className="text-sm text-slate">To: {o.recipient_name}</p>
               <div className="flex justify-between items-center mt-1">
                 <p className="text-xs text-slate">{STATUS_LABELS[o.status] ?? o.status} · {new Date(o.created_at).toLocaleDateString()}</p>
                 {o.total_charge != null && <p className="text-sm font-semibold text-navy">GHS {o.total_charge.toFixed(2)}</p>}
               </div>
-            </Link>
+              <Link to={`/account/shipments/${o.id}`} className="text-sm text-orange underline mt-2 inline-block">Manage this shipment</Link>
+            </div>
           ))}
         </div>
       </div>
