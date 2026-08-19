@@ -142,10 +142,11 @@ function drawLabelPage(
     doc.text(`${boxNumber}/${boxCount}`, 95, 97, { align: 'right' })
   }
 
-  doc.addImage(qrDataUrl, 'PNG', 35, 100, 30, 30)
+  // QR code enlarged from 30x30 to 36x36, re-centered
+  doc.addImage(qrDataUrl, 'PNG', 32, 99, 36, 36)
   doc.setFontSize(6)
   doc.setTextColor(...SLATE)
-  doc.text('Scan for full details', 50, 133, { align: 'center' })
+  doc.text('Scan for full details', 50, 138, { align: 'center' })
 
   doc.setFontSize(6)
   doc.text(`Printed ${printedAt}`, 50, 145, { align: 'center' })
@@ -154,7 +155,7 @@ function drawLabelPage(
 async function buildLabelPdf(shipment: Shipment, printedAt: string): Promise<jsPDF> {
   const logo = await loadImage('/omnicargo-logo.png')
   const qrValue = `${window.location.origin}/staff/scan/${shipment.tracking_number}`
-  const qrDataUrl = await QRCode.toDataURL(qrValue, { width: 300, margin: 1 })
+  const qrDataUrl = await QRCode.toDataURL(qrValue, { width: 400, margin: 1 })
 
   const boxCount = shipment.box_count ?? 1
   const doc = new jsPDF({ unit: 'mm', format: [100, 150] })
@@ -221,7 +222,7 @@ function LabelCard({ shipment, boxNumber, printedAt }: { shipment: Shipment; box
       )}
 
       <div className="flex-1 flex flex-col items-center justify-center gap-0.5 py-2">
-        <QRCodeSVG value={qrValue} size={72} />
+        <QRCodeSVG value={qrValue} size={92} />
         <p className="text-[8px] text-slate">Scan for full details</p>
       </div>
 
