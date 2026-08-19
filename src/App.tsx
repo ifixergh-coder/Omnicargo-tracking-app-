@@ -24,6 +24,7 @@ const CustomerLogin = lazy(() => import('./pages/CustomerLogin'))
 const CustomerDashboard = lazy(() => import('./pages/CustomerDashboard'))
 const CustomerAddresses = lazy(() => import('./pages/CustomerAddresses'))
 const CustomerProfile = lazy(() => import('./pages/CustomerProfile'))
+const CustomerShipmentDetail = lazy(() => import('./pages/CustomerShipmentDetail'))
 const StaffLogin = lazy(() => import('./pages/StaffLogin'))
 const StaffSignup = lazy(() => import('./pages/StaffSignup'))
 const StaffShipments = lazy(() => import('./pages/StaffShipments'))
@@ -42,6 +43,7 @@ const CustomerDetail = lazy(() => import('./pages/CustomerDetail'))
 const StaffPricingSettings = lazy(() => import('./pages/StaffPricingSettings'))
 const ManagementDashboard = lazy(() => import('./pages/ManagementDashboard'))
 const ManagementStaff = lazy(() => import('./pages/ManagementStaff'))
+const ManagementDailyWaybill = lazy(() => import('./pages/ManagementDailyWaybill'))
 
 function PageLoading() {
   return (
@@ -73,6 +75,7 @@ export default function App() {
           <Route path="/account" element={<ProtectedRoute><CustomerDashboard /></ProtectedRoute>} />
           <Route path="/account/addresses" element={<ProtectedRoute><CustomerAddresses /></ProtectedRoute>} />
           <Route path="/account/profile" element={<ProtectedRoute><CustomerProfile /></ProtectedRoute>} />
+          <Route path="/account/shipments/:id" element={<ProtectedRoute><CustomerShipmentDetail /></ProtectedRoute>} />
           <Route path="/account/signup" element={<CustomerSignup />} />
           <Route path="/account/login" element={<CustomerLogin />} />
 
@@ -104,6 +107,7 @@ export default function App() {
           <Route path="/management" element={<ProtectedRoute><ManagerRoute><ManagementDashboard /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/pricing" element={<ProtectedRoute><ManagerRoute><StaffPricingSettings /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/staff" element={<ProtectedRoute><ManagerRoute><ManagementStaff /></ManagerRoute></ProtectedRoute>} />
+          <Route path="/management/waybill" element={<ProtectedRoute><ManagerRoute><ManagementDailyWaybill /></ManagerRoute></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </BrowserRouter>
