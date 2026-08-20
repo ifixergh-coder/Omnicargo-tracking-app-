@@ -11,6 +11,7 @@ type Shipment = {
   destination_address: string | null
   weight_kg: number | null
   cbm: number | null
+  box_count: number | null
   total_charge: number | null
   payment_status: string
   assigned_vehicle_id: string | null
@@ -30,7 +31,7 @@ export default function ManagementDailyWaybill() {
     const end = new Date(date); end.setHours(23, 59, 59, 999)
 
     supabase.from('shipments')
-      .select('tracking_number, sender_name, sender_phone, recipient_name, recipient_phone, destination_address, weight_kg, cbm, total_charge, payment_status, assigned_vehicle_id')
+      .select('tracking_number, sender_name, sender_phone, recipient_name, recipient_phone, destination_address, weight_kg, cbm, box_count, total_charge, payment_status, assigned_vehicle_id')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
       .then(async ({ data }) => {
@@ -52,6 +53,7 @@ export default function ManagementDailyWaybill() {
 
   const totalWeight = items.reduce((sum, i) => sum + (i.weight_kg ?? 0), 0)
   const totalCbm = items.reduce((sum, i) => sum + (i.cbm ?? 0), 0)
+  const totalBoxes = items.reduce((sum, i) => sum + (i.box_count ?? 1), 0)
   const totalRevenue = items.reduce((sum, i) => sum + (i.total_charge ?? 0), 0)
   const paidRevenue = items.filter((i) => i.payment_status === 'paid').reduce((sum, i) => sum + (i.total_charge ?? 0), 0)
 
@@ -61,7 +63,7 @@ export default function ManagementDailyWaybill() {
         <ManagementNav />
       </div>
 
-      <div className="max-w-4xl mx-auto px-4">
+      <div className="max-w-6xl mx-auto px-4">
         <div className="print:hidden flex flex-wrap items-center gap-3 mb-4">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-md px-3 py-2" />
           <button onClick={() => window.print()} className="bg-orange text-white font-medium py-2 px-6 rounded-md">
@@ -84,17 +86,30 @@ export default function ManagementDailyWaybill() {
 
           {loading && <p className="text-sm text-slate">Loading…</p>}
 
-          <table className="w-full text-sm border-t border-gray-300">
+          <table className="w-full text-sm border-t border-gray-300 table-fixed">
+            <colgroup>
+              <col className="w-[12%]" />
+              <col className="w-[11%]" />
+              <col className="w-[14%]" />
+              <col className="w-[14%]" />
+              <col className="w-[15%]" />
+              <col className="w-[6%]" />
+              <col className="w-[8%]" />
+              <col className="w-[7%]" />
+              <col className="w-[9%]" />
+              <col className="w-[6%]" />
+            </colgroup>
             <thead>
-              <tr className="border-b border-gray-300 text-left">
-                <th className="py-2">Tracking #</th>
-                <th className="py-2">Sender</th>
-                <th className="py-2">Recipient</th>
-                <th className="py-2">Address</th>
-                <th className="py-2">Driver / Vehicle</th>
-                <th className="py-2 text-right">Weight</th>
-                <th className="py-2 text-right">CBM</th>
-                <th className="py-2 text-right">Charge</th>
+              <tr className="border-b border-gray-300 text-left align-bottom">
+                <th className="py-2 pr-2">Tracking #</th>
+                <th className="py-2 pr-2">Sender</th>
+                <th className="py-2 pr-2">Recipient</th>
+                <th className="py-2 pr-2">Address</th>
+                <th className="py-2 pr-2">Driver / Plate</th>
+                <th className="py-2 pr-2 text-right">Items</th>
+                <th className="py-2 pr-2 text-right">Weight</th>
+                <th className="py-2 pr-2 text-right">CBM</th>
+                <th className="py-2 pr-2 text-right">Charge</th>
                 <th className="py-2 text-right">Paid?</th>
               </tr>
             </thead>
@@ -102,35 +117,45 @@ export default function ManagementDailyWaybill() {
               {items.map((i) => {
                 const v = i.assigned_vehicle_id ? vehicles[i.assigned_vehicle_id] : null
                 return (
-                  <tr key={i.tracking_number} className="border-b border-gray-100">
-                    <td className="py-2 font-mono">{i.tracking_number}</td>
-                    <td className="py-2">{i.sender_name}</td>
-                    <td className="py-2">{i.recipient_name}{i.recipient_phone && ` · ${i.recipient_phone}`}</td>
-                    <td className="py-2">{i.destination_address ?? '—'}</td>
-                    <td className="py-2">
-                      {v ? `${v.driver_name ?? '—'} · ${v.plate_number ?? 'No plate'}` : '—'}
+                  <tr key={i.tracking_number} className="border-b border-gray-100 align-top">
+                    <td className="py-2 pr-2 font-mono break-all">{i.tracking_number}</td>
+                    <td className="py-2 pr-2 break-words">{i.sender_name}</td>
+                    <td className="py-2 pr-2 break-words">
+                      {i.recipient_name}
+                      {i.recipient_phone && <span className="block text-xs text-slate">{i.recipient_phone}</span>}
                     </td>
-                    <td className="py-2 text-right">{i.weight_kg ?? '—'} kg</td>
-                    <td className="py-2 text-right">{i.cbm?.toFixed(3) ?? '—'} m³</td>
-                    <td className="py-2 text-right">GHS {i.total_charge?.toFixed(2) ?? '—'}</td>
+                    <td className="py-2 pr-2 break-words">{i.destination_address ?? '—'}</td>
+                    <td className="py-2 pr-2 break-words">
+                      {v ? (
+                        <>
+                          {v.driver_name ?? '—'}
+                          <span className="block text-xs text-slate">{v.plate_number ?? 'No plate'}</span>
+                        </>
+                      ) : '—'}
+                    </td>
+                    <td className="py-2 pr-2 text-right">{i.box_count ?? 1}</td>
+                    <td className="py-2 pr-2 text-right">{i.weight_kg ?? '—'} kg</td>
+                    <td className="py-2 pr-2 text-right">{i.cbm?.toFixed(3) ?? '—'} m³</td>
+                    <td className="py-2 pr-2 text-right">GHS {i.total_charge?.toFixed(2) ?? '—'}</td>
                     <td className="py-2 text-right">{i.payment_status === 'paid' ? '✓' : '—'}</td>
                   </tr>
                 )
               })}
               {!loading && items.length === 0 && (
-                <tr><td colSpan={9} className="py-4 text-center text-slate">No shipments on this date.</td></tr>
+                <tr><td colSpan={10} className="py-4 text-center text-slate">No shipments on this date.</td></tr>
               )}
             </tbody>
             <tfoot>
               <tr className="font-semibold">
-                <td className="py-2" colSpan={5}>Total: {items.length} item(s)</td>
-                <td className="py-2 text-right">{totalWeight.toFixed(2)} kg</td>
-                <td className="py-2 text-right">{totalCbm.toFixed(3)} m³</td>
-                <td className="py-2 text-right">GHS {totalRevenue.toFixed(2)}</td>
+                <td className="py-2 pr-2" colSpan={5}>Total: {items.length} shipment(s)</td>
+                <td className="py-2 pr-2 text-right">{totalBoxes}</td>
+                <td className="py-2 pr-2 text-right">{totalWeight.toFixed(2)} kg</td>
+                <td className="py-2 pr-2 text-right">{totalCbm.toFixed(3)} m³</td>
+                <td className="py-2 pr-2 text-right">GHS {totalRevenue.toFixed(2)}</td>
                 <td></td>
               </tr>
               <tr>
-                <td className="pt-1 text-sm text-slate" colSpan={9}>
+                <td className="pt-1 text-sm text-slate" colSpan={10}>
                   Of which GHS {paidRevenue.toFixed(2)} confirmed paid, GHS {(totalRevenue - paidRevenue).toFixed(2)} still unpaid.
                 </td>
               </tr>
