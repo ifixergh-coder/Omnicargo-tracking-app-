@@ -13,8 +13,6 @@ type Shipment = {
   total_charge: number | null
   assigned_vehicle_id: string | null
   batch_id: string | null
-  source: string
-  pickup_location: string | null
   created_at: string
 }
 
@@ -35,7 +33,7 @@ export default function StaffShipments() {
     setLoading(true)
     let query = supabase
       .from('shipments')
-      .select('id, tracking_number, sender_name, recipient_name, status, total_charge, assigned_vehicle_id, batch_id, source, pickup_location, created_at')
+      .select('id, tracking_number, sender_name, recipient_name, status, total_charge, assigned_vehicle_id, batch_id, created_at')
       .order('created_at', { ascending: false })
 
     if (!showAll) {
@@ -55,8 +53,6 @@ export default function StaffShipments() {
     setShipments((prev) => prev.map((s) => (s.id === shipmentId ? { ...s, assigned_vehicle_id: vehicleId || null } : s)))
   }
 
-  const pickupRequests = shipments.filter((s) => s.source === 'customer_web' && s.status === 'pending')
-
   return (
     <div className="min-h-screen bg-gray-50 pb-24 md:pb-8">
       <StaffNav />
@@ -68,15 +64,6 @@ export default function StaffShipments() {
           </Link>
         </div>
 
-        {pickupRequests.length > 0 && (
-          <div className="bg-orange/10 border border-orange rounded-lg p-4 mb-6">
-            <p className="text-sm font-semibold text-navy mb-1">
-              {pickupRequests.length} customer pickup request{pickupRequests.length > 1 ? 's' : ''} awaiting confirmation
-            </p>
-            <p className="text-xs text-slate">These need a vehicle assigned and the pickup arranged.</p>
-          </div>
-        )}
-
         <button onClick={() => setShowAll(s => !s)} className="text-sm text-orange underline mb-4">
           {showAll ? 'Show today only' : 'Show all shipments'}
         </button>
@@ -86,19 +73,11 @@ export default function StaffShipments() {
 
         <div className="space-y-3">
           {shipments.map(s => (
-            <div key={s.id} className={`bg-white rounded-lg shadow-sm p-4 ${s.source === 'customer_web' && s.status === 'pending' ? 'border-2 border-orange' : ''}`}>
+            <div key={s.id} className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <div className="flex items-center gap-2">
-                    <p className="font-mono font-medium text-navy">{s.tracking_number}</p>
-                    {s.source === 'customer_web' && (
-                      <span className="text-[10px] font-semibold text-orange bg-orange/10 px-2 py-0.5 rounded-full">
-                        WEB REQUEST
-                      </span>
-                    )}
-                  </div>
+                  <p className="font-mono font-medium text-navy">{s.tracking_number}</p>
                   <p className="text-sm text-slate">{s.sender_name} → {s.recipient_name}</p>
-                  {s.pickup_location && <p className="text-xs text-slate">Pickup: {s.pickup_location}</p>}
                   <p className="text-xs text-slate mt-1">
                     {STATUS_LABELS[s.status] ?? s.status} · {new Date(s.created_at).toLocaleString()}
                     {s.batch_id && <span className="ml-1">· <Link to={`/staff/batches/${s.batch_id}`} className="text-orange underline">In batch</Link></span>}
@@ -107,6 +86,7 @@ export default function StaffShipments() {
                 <div className="flex flex-col items-end gap-1 text-sm shrink-0">
                   {s.total_charge != null && <p className="font-semibold text-navy">GHS {s.total_charge.toFixed(2)}</p>}
                   <div className="flex gap-3">
+                    <Link to={`/staff/shipments/${s.id}/edit`} className="text-orange underline">Edit</Link>
                     <Link to={`/staff/shipments/${s.id}/label`} className="text-orange underline">Label</Link>
                     <Link to={`/staff/shipments/${s.id}/invoice`} className="text-orange underline">Invoice</Link>
                   </div>
