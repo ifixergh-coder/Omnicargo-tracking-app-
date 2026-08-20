@@ -34,6 +34,7 @@ const BatchDetail = lazy(() => import('./pages/BatchDetail'))
 const BatchWaybill = lazy(() => import('./pages/BatchWaybill'))
 const DailyWaybill = lazy(() => import('./pages/DailyWaybill'))
 const NewShipment = lazy(() => import('./pages/NewShipment'))
+const ShipmentEdit = lazy(() => import('./pages/ShipmentEdit'))
 const StaffBookPickup = lazy(() => import('./pages/StaffBookPickup'))
 const ShipmentLabel = lazy(() => import('./pages/ShipmentLabel'))
 const ShipmentInvoice = lazy(() => import('./pages/ShipmentInvoice'))
@@ -91,6 +92,7 @@ export default function App() {
           <Route path="/staff/signup" element={<StaffSignup />} />
           <Route path="/staff/shipments" element={<ProtectedRoute><StaffShipments /></ProtectedRoute>} />
           <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
+          <Route path="/staff/shipments/:id/edit" element={<ProtectedRoute><ShipmentEdit /></ProtectedRoute>} />
           <Route path="/staff/book-pickup" element={<ProtectedRoute><StaffBookPickup /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
