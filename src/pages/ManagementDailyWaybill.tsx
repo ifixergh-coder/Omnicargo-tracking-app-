@@ -13,11 +13,15 @@ type Shipment = {
   cbm: number | null
   total_charge: number | null
   payment_status: string
+  assigned_vehicle_id: string | null
 }
+
+type Vehicle = { id: string; driver_name: string | null; plate_number: string | null }
 
 export default function ManagementDailyWaybill() {
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10))
   const [items, setItems] = useState<Shipment[]>([])
+  const [vehicles, setVehicles] = useState<Record<string, Vehicle>>({})
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -26,11 +30,22 @@ export default function ManagementDailyWaybill() {
     const end = new Date(date); end.setHours(23, 59, 59, 999)
 
     supabase.from('shipments')
-      .select('tracking_number, sender_name, sender_phone, recipient_name, recipient_phone, destination_address, weight_kg, cbm, total_charge, payment_status')
+      .select('tracking_number, sender_name, sender_phone, recipient_name, recipient_phone, destination_address, weight_kg, cbm, total_charge, payment_status, assigned_vehicle_id')
       .gte('created_at', start.toISOString())
       .lte('created_at', end.toISOString())
-      .then(({ data }) => {
-        setItems((data as Shipment[]) ?? [])
+      .then(async ({ data }) => {
+        const list = (data as Shipment[]) ?? []
+        setItems(list)
+
+        const vehicleIds = [...new Set(list.map((i) => i.assigned_vehicle_id).filter(Boolean))] as string[]
+        if (vehicleIds.length > 0) {
+          const { data: vData } = await supabase.from('vehicles').select('id, driver_name, plate_number').in('id', vehicleIds)
+          const map: Record<string, Vehicle> = {}
+          for (const v of (vData as Vehicle[]) ?? []) map[v.id] = v
+          setVehicles(map)
+        } else {
+          setVehicles({})
+        }
         setLoading(false)
       })
   }, [date])
@@ -46,7 +61,7 @@ export default function ManagementDailyWaybill() {
         <ManagementNav />
       </div>
 
-      <div className="max-w-3xl mx-auto px-4">
+      <div className="max-w-4xl mx-auto px-4">
         <div className="print:hidden flex flex-wrap items-center gap-3 mb-4">
           <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="border rounded-md px-3 py-2" />
           <button onClick={() => window.print()} className="bg-orange text-white font-medium py-2 px-6 rounded-md">
@@ -76,6 +91,7 @@ export default function ManagementDailyWaybill() {
                 <th className="py-2">Sender</th>
                 <th className="py-2">Recipient</th>
                 <th className="py-2">Address</th>
+                <th className="py-2">Driver / Vehicle</th>
                 <th className="py-2 text-right">Weight</th>
                 <th className="py-2 text-right">CBM</th>
                 <th className="py-2 text-right">Charge</th>
@@ -83,32 +99,38 @@ export default function ManagementDailyWaybill() {
               </tr>
             </thead>
             <tbody>
-              {items.map((i) => (
-                <tr key={i.tracking_number} className="border-b border-gray-100">
-                  <td className="py-2 font-mono">{i.tracking_number}</td>
-                  <td className="py-2">{i.sender_name}</td>
-                  <td className="py-2">{i.recipient_name}{i.recipient_phone && ` · ${i.recipient_phone}`}</td>
-                  <td className="py-2">{i.destination_address ?? '—'}</td>
-                  <td className="py-2 text-right">{i.weight_kg ?? '—'} kg</td>
-                  <td className="py-2 text-right">{i.cbm?.toFixed(3) ?? '—'} m³</td>
-                  <td className="py-2 text-right">GHS {i.total_charge?.toFixed(2) ?? '—'}</td>
-                  <td className="py-2 text-right">{i.payment_status === 'paid' ? '✓' : '—'}</td>
-                </tr>
-              ))}
+              {items.map((i) => {
+                const v = i.assigned_vehicle_id ? vehicles[i.assigned_vehicle_id] : null
+                return (
+                  <tr key={i.tracking_number} className="border-b border-gray-100">
+                    <td className="py-2 font-mono">{i.tracking_number}</td>
+                    <td className="py-2">{i.sender_name}</td>
+                    <td className="py-2">{i.recipient_name}{i.recipient_phone && ` · ${i.recipient_phone}`}</td>
+                    <td className="py-2">{i.destination_address ?? '—'}</td>
+                    <td className="py-2">
+                      {v ? `${v.driver_name ?? '—'} · ${v.plate_number ?? 'No plate'}` : '—'}
+                    </td>
+                    <td className="py-2 text-right">{i.weight_kg ?? '—'} kg</td>
+                    <td className="py-2 text-right">{i.cbm?.toFixed(3) ?? '—'} m³</td>
+                    <td className="py-2 text-right">GHS {i.total_charge?.toFixed(2) ?? '—'}</td>
+                    <td className="py-2 text-right">{i.payment_status === 'paid' ? '✓' : '—'}</td>
+                  </tr>
+                )
+              })}
               {!loading && items.length === 0 && (
-                <tr><td colSpan={8} className="py-4 text-center text-slate">No shipments on this date.</td></tr>
+                <tr><td colSpan={9} className="py-4 text-center text-slate">No shipments on this date.</td></tr>
               )}
             </tbody>
             <tfoot>
               <tr className="font-semibold">
-                <td className="py-2" colSpan={4}>Total: {items.length} item(s)</td>
+                <td className="py-2" colSpan={5}>Total: {items.length} item(s)</td>
                 <td className="py-2 text-right">{totalWeight.toFixed(2)} kg</td>
                 <td className="py-2 text-right">{totalCbm.toFixed(3)} m³</td>
                 <td className="py-2 text-right">GHS {totalRevenue.toFixed(2)}</td>
                 <td></td>
               </tr>
               <tr>
-                <td className="pt-1 text-sm text-slate" colSpan={8}>
+                <td className="pt-1 text-sm text-slate" colSpan={9}>
                   Of which GHS {paidRevenue.toFixed(2)} confirmed paid, GHS {(totalRevenue - paidRevenue).toFixed(2)} still unpaid.
                 </td>
               </tr>
