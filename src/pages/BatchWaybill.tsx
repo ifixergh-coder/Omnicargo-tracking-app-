@@ -2,7 +2,15 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 
-type Batch = { id: string; batch_number: string; origin: string | null; destination: string | null; created_at: string }
+type Batch = {
+  id: string
+  batch_number: string
+  origin: string | null
+  destination: string | null
+  created_at: string
+  assigned_vehicle_id: string | null
+}
+type Vehicle = { driver_name: string | null; plate_number: string | null }
 type Shipment = {
   tracking_number: string
   sender_name: string
@@ -16,11 +24,19 @@ type Shipment = {
 export default function BatchWaybill() {
   const { id } = useParams()
   const [batch, setBatch] = useState<Batch | null>(null)
+  const [vehicle, setVehicle] = useState<Vehicle | null>(null)
   const [items, setItems] = useState<Shipment[]>([])
 
   useEffect(() => {
     if (!id) return
-    supabase.from('batches').select('*').eq('id', id).maybeSingle().then(({ data }) => setBatch(data as Batch))
+    supabase.from('batches').select('*').eq('id', id).maybeSingle().then(async ({ data }) => {
+      const b = data as Batch
+      setBatch(b)
+      if (b?.assigned_vehicle_id) {
+        const { data: vData } = await supabase.from('vehicles').select('driver_name, plate_number').eq('id', b.assigned_vehicle_id).maybeSingle()
+        setVehicle(vData as Vehicle)
+      }
+    })
     supabase.from('shipments')
       .select('tracking_number, sender_name, recipient_name, recipient_phone, destination_address, weight_kg, cbm')
       .eq('batch_id', id)
@@ -52,7 +68,10 @@ export default function BatchWaybill() {
 
         <h1 className="text-lg font-semibold text-navy mb-2">Waybill — {batch.batch_number}</h1>
         <p className="text-sm text-slate mb-1">Route: {batch.origin ?? '—'} → {batch.destination ?? '—'}</p>
-        <p className="text-sm text-slate mb-4">Date: {new Date(batch.created_at).toLocaleDateString()}</p>
+        <p className="text-sm text-slate mb-1">Date: {new Date(batch.created_at).toLocaleDateString()}</p>
+        <p className="text-sm text-slate mb-4">
+          Driver: {vehicle?.driver_name ?? '—'} · Vehicle plate: {vehicle?.plate_number ?? '—'}
+        </p>
 
         <table className="w-full text-sm border-t border-gray-300">
           <thead>
