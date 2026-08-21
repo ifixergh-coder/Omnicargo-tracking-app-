@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import DriverNav from '../components/DriverNav'
 
-type Vehicle = { id: string; label: string; tracking_source: string }
+type Vehicle = { id: string; label: string; plate_number: string | null; tracking_source: string }
 
 const LOCATIONS = ['Accra', 'Tema', 'Kumasi', 'Takoradi', 'Cape Coast', 'Tamale', 'Ho', 'Koforidua', 'Sunyani', 'Techiman', 'Wa', 'Bolgatanga']
 
@@ -16,6 +17,7 @@ export default function DriverPage() {
   const [tripId, setTripId] = useState<number | null>(null)
   const [lastSent, setLastSent] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   const [showPinPrompt, setShowPinPrompt] = useState(false)
   const [pinInput, setPinInput] = useState('')
@@ -26,18 +28,24 @@ export default function DriverPage() {
     supabase.auth.getUser().then(async ({ data }) => {
       if (data.user) {
         const { data: myVehicle } = await supabase
-          .from('vehicles').select('id, label, tracking_source')
+          .from('vehicles').select('id, label, plate_number, tracking_source')
           .eq('driver_user_id', data.user.id).maybeSingle()
         if (myVehicle) {
           setOwnVehicle(myVehicle as Vehicle)
           setSelectedVehicle((myVehicle as Vehicle).id)
+          setLoading(false)
           return
         }
       }
-      supabase.from('vehicles').select('id, label, tracking_source').eq('active', true).eq('tracking_source', 'phone')
-        .then(({ data }) => setVehicles((data as Vehicle[]) ?? []))
+      const { data: vList } = await supabase
+        .from('vehicles').select('id, label, plate_number, tracking_source')
+        .eq('active', true).eq('tracking_source', 'phone')
+      setVehicles((vList as Vehicle[]) ?? [])
+      setLoading(false)
     })
   }, [])
+
+  const selectedVehicleDetails = ownVehicle ?? vehicles.find((v) => v.id === selectedVehicle) ?? null
 
   async function startSharing() {
     const finalDestination = destination === 'Other' ? customDestination : destination
@@ -94,74 +102,104 @@ export default function DriverPage() {
     return () => navigator.geolocation.clearWatch(watchId)
   }, [sharing, selectedVehicle, tripId])
 
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DriverNav />
+        <p className="text-center text-slate mt-12">Loading…</p>
+      </div>
+    )
+  }
+
   return (
-    <div className="min-h-screen bg-navy flex flex-col items-center justify-center px-6 py-8">
-      <div className="w-full max-w-sm bg-white rounded-lg shadow-lg p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 rounded-full bg-orange" />
-            <span className="font-semibold text-navy">Driver location sharing</span>
+    <div className="min-h-screen bg-gray-50">
+      <DriverNav />
+      <div className="max-w-sm mx-auto px-6 py-4">
+        <div className="bg-white rounded-lg shadow-lg p-6">
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`w-2.5 h-2.5 rounded-full ${sharing ? 'bg-green-500 animate-pulse' : 'bg-gray-300'}`} />
+            <span className="font-semibold text-navy">
+              {sharing ? 'Location sharing active' : 'Location sharing off'}
+            </span>
           </div>
-          <a href="/staff/scan" className="text-xs text-orange underline">Scan a package</a>
-        </div>
 
-        {!sharing ? (
-          <>
-            {ownVehicle ? (
-              <p className="text-sm text-slate mb-4">Vehicle: <span className="font-medium text-navy">{ownVehicle.label}</span></p>
-            ) : (
-              <>
-                <label className="block text-sm font-medium text-slate mb-2">Which vehicle are you driving?</label>
-                <select value={selectedVehicle} onChange={(e) => setSelectedVehicle(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy">
-                  <option value="">Select vehicle…</option>
-                  {vehicles.map((v) => <option key={v.id} value={v.id}>{v.label}</option>)}
-                </select>
-              </>
-            )}
-
-            <label className="block text-sm font-medium text-slate mb-2">From</label>
-            <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy">
-              <option value="">Select origin…</option>
-              {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-            </select>
-
-            <label className="block text-sm font-medium text-slate mb-2">To</label>
-            <select value={destination} onChange={(e) => setDestination(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-2 text-navy">
-              <option value="">Select destination…</option>
-              {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
-              <option value="Other">Other (specific location)</option>
-            </select>
-            {destination === 'Other' && (
-              <input placeholder="Enter specific destination" value={customDestination} onChange={(e) => setCustomDestination(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy" />
-            )}
-
-            <button onClick={startSharing} disabled={!selectedVehicle} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-40 mt-2">
-              Start sharing location
-            </button>
-          </>
-        ) : (
-          <>
-            <p className="text-sm text-slate mb-4">{origin || '—'} → {destination === 'Other' ? customDestination : destination || '—'}</p>
-            <button onClick={requestStop} className="w-full bg-navy text-white font-medium py-3 rounded-md">Stop sharing</button>
-            <p className="text-xs text-green-600 mt-3">Sharing live — last update {lastSent ?? 'sending…'}. Keep this page open while on delivery.</p>
-          </>
-        )}
-
-        {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
-
-        {showPinPrompt && (
-          <div className="mt-4 border-t pt-4">
-            <p className="text-sm font-medium text-navy mb-2">Manager PIN required to stop sharing</p>
-            <input type="password" inputMode="numeric" placeholder="Enter PIN" value={pinInput} onChange={(e) => setPinInput(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-2 text-navy" />
-            {pinError && <p className="text-xs text-red-600 mb-2">{pinError}</p>}
-            <div className="flex gap-2">
-              <button onClick={() => setShowPinPrompt(false)} className="flex-1 border border-gray-300 text-slate py-2 rounded-md text-sm">Cancel</button>
-              <button onClick={confirmStop} disabled={verifyingPin} className="flex-1 bg-orange text-white py-2 rounded-md text-sm disabled:opacity-50">
-                {verifyingPin ? 'Checking…' : 'Confirm'}
-              </button>
+          {selectedVehicleDetails && (
+            <div className="bg-gray-50 rounded-md p-3 mb-4 text-sm">
+              <p className="text-navy font-medium">{selectedVehicleDetails.label}</p>
+              <p className="text-slate text-xs mt-0.5">Plate: {selectedVehicleDetails.plate_number ?? 'Not set'}</p>
             </div>
-          </div>
-        )}
+          )}
+
+          {!ownVehicle && !selectedVehicleDetails && (
+            <div className="bg-orange/10 border border-orange/30 rounded-md p-3 mb-4">
+              <p className="text-sm text-orange">
+                No vehicle is linked to your account yet — ask a manager to link one at /staff/vehicles.
+              </p>
+            </div>
+          )}
+
+          {!sharing ? (
+            <>
+              {!ownVehicle && vehicles.length > 0 && (
+                <>
+                  <label className="block text-sm font-medium text-slate mb-2">Which vehicle are you driving?</label>
+                  <select value={selectedVehicle} onChange={(e) => setSelectedVehicle(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy">
+                    <option value="">Select vehicle…</option>
+                    {vehicles.map((v) => <option key={v.id} value={v.id}>{v.label}{v.plate_number ? ` — ${v.plate_number}` : ''}</option>)}
+                  </select>
+                </>
+              )}
+
+              <label className="block text-sm font-medium text-slate mb-2">From</label>
+              <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy">
+                <option value="">Select origin…</option>
+                {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+              </select>
+
+              <label className="block text-sm font-medium text-slate mb-2">To</label>
+              <select value={destination} onChange={(e) => setDestination(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-2 text-navy">
+                <option value="">Select destination…</option>
+                {LOCATIONS.map((l) => <option key={l} value={l}>{l}</option>)}
+                <option value="Other">Other (specific location)</option>
+              </select>
+              {destination === 'Other' && (
+                <input placeholder="Enter specific destination" value={customDestination} onChange={(e) => setCustomDestination(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy" />
+              )}
+
+              <button onClick={startSharing} disabled={!selectedVehicle} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-40 mt-2">
+                Start sharing location
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate mb-4">
+                Route: {origin || '—'} → {destination === 'Other' ? customDestination : destination || '—'}
+              </p>
+              <button onClick={requestStop} className="w-full bg-navy text-white font-medium py-3 rounded-md">
+                Stop sharing
+              </button>
+              <p className="text-xs text-green-600 mt-3">
+                Last update sent: {lastSent ?? 'sending…'}. Keep this page open while on delivery.
+              </p>
+            </>
+          )}
+
+          {error && <p className="text-xs text-red-600 mt-3">{error}</p>}
+
+          {showPinPrompt && (
+            <div className="mt-4 border-t pt-4">
+              <p className="text-sm font-medium text-navy mb-2">Manager PIN required to stop sharing</p>
+              <input type="password" inputMode="numeric" placeholder="Enter PIN" value={pinInput} onChange={(e) => setPinInput(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-2 text-navy" />
+              {pinError && <p className="text-xs text-red-600 mb-2">{pinError}</p>}
+              <div className="flex gap-2">
+                <button onClick={() => setShowPinPrompt(false)} className="flex-1 border border-gray-300 text-slate py-2 rounded-md text-sm">Cancel</button>
+                <button onClick={confirmStop} disabled={verifyingPin} className="flex-1 bg-orange text-white py-2 rounded-md text-sm disabled:opacity-50">
+                  {verifyingPin ? 'Checking…' : 'Confirm'}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   )
