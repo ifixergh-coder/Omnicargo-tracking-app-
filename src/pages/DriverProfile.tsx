@@ -58,7 +58,6 @@ export default function DriverProfile() {
       user_id: userData.user.id, full_name: fullName, phone, photo_path: photoPath,
     }, { onConflict: 'user_id' })
 
-    // Keep the vehicle's driver_name/phone in sync too, so waybills stay accurate
     if (vehicle) {
       await supabase.from('vehicles').update({ driver_name: fullName, driver_phone: phone }).eq('id', vehicle.id)
     }
@@ -112,7 +111,7 @@ export default function DriverProfile() {
           </div>
           <label className="text-sm text-orange underline cursor-pointer">
             {uploading ? 'Uploading…' : photoPath ? 'Change photo' : 'Upload photo'}
-            <input type="file" accept="image/*" capture="user" onChange={handlePhotoUpload} disabled={uploading} className="hidden" />
+            <input type="file" accept="image/*" onChange={handlePhotoUpload} disabled={uploading} className="hidden" />
           </label>
         </div>
 
