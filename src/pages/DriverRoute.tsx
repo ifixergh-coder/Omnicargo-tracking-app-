@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { orderByProximity, distanceKm } from '../lib/geo'
+import DriverNav from '../components/DriverNav'
 
 type Stop = {
   shipmentId: string
@@ -79,10 +80,10 @@ export default function DriverRoute() {
     : stops
 
   return (
-    <div className="min-h-screen bg-gray-50 px-6 py-8">
-      <div className="max-w-md mx-auto">
-        <a href="/driver" className="text-orange underline text-sm">← Back to location sharing</a>
-        <h1 className="text-xl font-semibold text-navy mt-4 mb-2">Today's route</h1>
+    <div className="min-h-screen bg-gray-50">
+      <DriverNav />
+      <div className="max-w-md mx-auto px-6 pb-8">
+        <h1 className="text-xl font-semibold text-navy mt-2 mb-2">Today's route</h1>
         <p className="text-sm text-slate mb-4">
           Stops ordered by distance from your current position — always showing the nearest one next.
         </p>
