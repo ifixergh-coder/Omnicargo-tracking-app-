@@ -45,6 +45,7 @@ const StaffPricingSettings = lazy(() => import('./pages/StaffPricingSettings'))
 const ManagementDashboard = lazy(() => import('./pages/ManagementDashboard'))
 const ManagementStaff = lazy(() => import('./pages/ManagementStaff'))
 const ManagementDailyWaybill = lazy(() => import('./pages/ManagementDailyWaybill'))
+const ManagementDrivers = lazy(() => import('./pages/ManagementDrivers'))
 
 function PageLoading() {
   return (
@@ -110,6 +111,7 @@ export default function App() {
           <Route path="/management/pricing" element={<ProtectedRoute><ManagerRoute><StaffPricingSettings /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/staff" element={<ProtectedRoute><ManagerRoute><ManagementStaff /></ManagerRoute></ProtectedRoute>} />
           <Route path="/management/waybill" element={<ProtectedRoute><ManagerRoute><ManagementDailyWaybill /></ManagerRoute></ProtectedRoute>} />
+          <Route path="/management/drivers" element={<ProtectedRoute><ManagerRoute><ManagementDrivers /></ManagerRoute></ProtectedRoute>} />
         </Routes>
       </Suspense>
     </BrowserRouter>
