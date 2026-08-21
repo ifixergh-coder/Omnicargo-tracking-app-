@@ -33,7 +33,7 @@ export default function ManagementStaff() {
     setLoading(true)
     supabase.from('staff_signup_requests').select('*').eq('status', 'pending').order('created_at', { ascending: false })
       .then(({ data }) => setRequests((data as SignupRequest[]) ?? []))
-    supabase.from('staff_signup_codes').select('*').order('created_at', { ascending: false }).limit(20)
+    supabase.from('staff_signup_codes').select('*').is('used_by', null).order('created_at', { ascending: false }).limit(20)
       .then(({ data }) => { setCodes((data as SignupCode[]) ?? []); setLoading(false) })
   }
 
@@ -97,14 +97,15 @@ export default function ManagementStaff() {
               Generate code
             </button>
           </div>
-          <p className="text-xs text-slate mb-3">Give a code to a new hire to enter during sign-up. Codes are single-use, but approval is still required either way.</p>
+          <p className="text-xs text-slate mb-3">Give a code to a new hire to enter during sign-up. Approval is still required either way.</p>
           <div className="space-y-1">
             {codes.map((c) => (
               <div key={c.code} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
                 <span className="font-mono text-navy">{c.code}</span>
-                <span className="text-xs text-slate">{c.used_by ? 'Used' : 'Unused'} · {new Date(c.created_at).toLocaleDateString()}</span>
+                <span className="text-xs text-slate">Generated {new Date(c.created_at).toLocaleDateString()}</span>
               </div>
             ))}
+            {codes.length === 0 && <p className="text-sm text-slate">No codes generated yet.</p>}
           </div>
         </div>
       </div>
