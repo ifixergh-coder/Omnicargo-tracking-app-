@@ -50,7 +50,7 @@ export default function ManagementDrivers() {
     setLoading(true)
     supabase.from('driver_signup_requests').select('*').eq('status', 'pending').order('created_at', { ascending: false })
       .then(({ data }) => setRequests((data as DriverRequest[]) ?? []))
-    supabase.from('driver_signup_codes').select('*').order('created_at', { ascending: false }).limit(20)
+    supabase.from('driver_signup_codes').select('*').is('used_by', null).order('created_at', { ascending: false }).limit(20)
       .then(({ data }) => setCodes((data as DriverCode[]) ?? []))
     supabase.from('vehicles').select('*').order('label')
       .then(({ data }) => { setVehicles((data as Vehicle[]) ?? []); setLoading(false) })
@@ -189,7 +189,7 @@ export default function ManagementDrivers() {
             {codes.map((c) => (
               <div key={c.code} className="flex items-center justify-between text-sm border-b border-gray-100 pb-1">
                 <span className="font-mono text-navy">{c.code}</span>
-                <span className="text-xs text-slate">{c.used_by ? 'Used' : 'Unused'} · {new Date(c.created_at).toLocaleDateString()}</span>
+                <span className="text-xs text-slate">Generated {new Date(c.created_at).toLocaleDateString()}</span>
               </div>
             ))}
             {codes.length === 0 && <p className="text-sm text-slate">No codes generated yet.</p>}
