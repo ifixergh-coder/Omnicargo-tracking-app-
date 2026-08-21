@@ -132,17 +132,41 @@ export default function BookPickupPage() {
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Your details (sender)</h2>
             <ContactPickerButton onSelect={(name, phone) => { setSenderName(name); setSenderPhone(phone) }} />
-            <input placeholder="Your name" value={senderName} onChange={e => setSenderName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Your phone number" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Your email (optional)" value={senderEmail} onChange={e => setSenderEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <input
+              name="sender-name" autoComplete="billing name"
+              placeholder="Your name" value={senderName} onChange={e => setSenderName(e.target.value)} required
+              className="w-full border rounded-md px-3 py-2 mb-2"
+            />
+            <input
+              name="sender-tel" autoComplete="billing tel" type="tel"
+              placeholder="Your phone number" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required
+              className="w-full border rounded-md px-3 py-2 mb-2"
+            />
+            <input
+              name="sender-email" autoComplete="billing email" type="email"
+              placeholder="Your email (optional)" value={senderEmail} onChange={e => setSenderEmail(e.target.value)}
+              className="w-full border rounded-md px-3 py-2"
+            />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Recipient details</h2>
             <ContactPickerButton onSelect={(name, phone) => { setRecipientName(name); setRecipientPhone(phone) }} />
-            <input placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
-            <input placeholder="Recipient email (optional)" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <input
+              name="recipient-name" autoComplete="shipping name"
+              placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required
+              className="w-full border rounded-md px-3 py-2 mb-2"
+            />
+            <input
+              name="recipient-tel" autoComplete="shipping tel" type="tel"
+              placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)}
+              className="w-full border rounded-md px-3 py-2 mb-2"
+            />
+            <input
+              name="recipient-email" autoComplete="shipping email" type="email"
+              placeholder="Recipient email (optional)" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)}
+              className="w-full border rounded-md px-3 py-2"
+            />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
