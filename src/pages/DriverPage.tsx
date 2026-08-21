@@ -2,14 +2,14 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import DriverNav from '../components/DriverNav'
 
-type Vehicle = { id: string; label: string; plate_number: string | null; tracking_source: string }
+type Vehicle = { id: string; label: string; plate_number: string | null; vehicle_type: string | null }
 
 const LOCATIONS = ['Accra', 'Tema', 'Kumasi', 'Takoradi', 'Cape Coast', 'Tamale', 'Ho', 'Koforidua', 'Sunyani', 'Techiman', 'Wa', 'Bolgatanga']
 
 export default function DriverPage() {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [ownVehicle, setOwnVehicle] = useState<Vehicle | null>(null)
-  const [selectedVehicle, setSelectedVehicle] = useState('')
+  const [pendingApproval, setPendingApproval] = useState(false)
+  const [noRequestFound, setNoRequestFound] = useState(false)
   const [origin, setOrigin] = useState('')
   const [destination, setDestination] = useState('')
   const [customDestination, setCustomDestination] = useState('')
@@ -26,32 +26,34 @@ export default function DriverPage() {
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data }) => {
-      if (data.user) {
-        const { data: myVehicle } = await supabase
-          .from('vehicles').select('id, label, plate_number, tracking_source')
-          .eq('driver_user_id', data.user.id).maybeSingle()
-        if (myVehicle) {
-          setOwnVehicle(myVehicle as Vehicle)
-          setSelectedVehicle((myVehicle as Vehicle).id)
-          setLoading(false)
-          return
-        }
+      if (!data.user) { setLoading(false); return }
+
+      const { data: myVehicle } = await supabase
+        .from('vehicles').select('id, label, plate_number, vehicle_type')
+        .eq('driver_user_id', data.user.id).maybeSingle()
+      if (myVehicle) {
+        setOwnVehicle(myVehicle as Vehicle)
+        setLoading(false)
+        return
       }
-      const { data: vList } = await supabase
-        .from('vehicles').select('id, label, plate_number, tracking_source')
-        .eq('active', true).eq('tracking_source', 'phone')
-      setVehicles((vList as Vehicle[]) ?? [])
+
+      const { data: pendingRequest } = await supabase
+        .from('driver_signup_requests').select('id').eq('user_id', data.user.id).eq('status', 'pending').maybeSingle()
+      if (pendingRequest) {
+        setPendingApproval(true)
+      } else {
+        setNoRequestFound(true)
+      }
       setLoading(false)
     })
   }, [])
 
-  const selectedVehicleDetails = ownVehicle ?? vehicles.find((v) => v.id === selectedVehicle) ?? null
-
   async function startSharing() {
+    if (!ownVehicle) return
     const finalDestination = destination === 'Other' ? customDestination : destination
     const { data, error: tripError } = await supabase
       .from('trips')
-      .insert({ vehicle_id: selectedVehicle, origin: origin || null, destination: finalDestination || null })
+      .insert({ vehicle_id: ownVehicle.id, origin: origin || null, destination: finalDestination || null })
       .select()
     if (tripError) { setError(tripError.message); return }
     setTripId((data as any)?.[0]?.id ?? null)
@@ -80,7 +82,7 @@ export default function DriverPage() {
   }
 
   useEffect(() => {
-    if (!sharing || !selectedVehicle) return
+    if (!sharing || !ownVehicle) return
     if (!('geolocation' in navigator)) {
       setError('This device does not support location sharing.')
       setSharing(false)
@@ -90,7 +92,7 @@ export default function DriverPage() {
       async (pos) => {
         const { latitude, longitude, heading, speed } = pos.coords
         const { error: insertError } = await supabase.from('location_updates').insert({
-          vehicle_id: selectedVehicle, source: 'phone', lat: latitude, lng: longitude,
+          vehicle_id: ownVehicle.id, source: 'phone', lat: latitude, lng: longitude,
           heading: heading ?? null, speed: speed ?? null, trip_id: tripId,
         })
         if (insertError) setError(insertError.message)
@@ -100,13 +102,45 @@ export default function DriverPage() {
       { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 },
     )
     return () => navigator.geolocation.clearWatch(watchId)
-  }, [sharing, selectedVehicle, tripId])
+  }, [sharing, ownVehicle, tripId])
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <DriverNav />
         <p className="text-center text-slate mt-12">Loading…</p>
+      </div>
+    )
+  }
+
+  if (pendingApproval) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DriverNav />
+        <div className="max-w-sm mx-auto px-6 py-12 text-center">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <p className="text-navy font-semibold mb-2">Your account is pending approval</p>
+            <p className="text-sm text-slate">
+              A manager needs to assign you a vehicle before you can start sharing location or scanning packages. Check back soon.
+            </p>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (noRequestFound) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <DriverNav />
+        <div className="max-w-sm mx-auto px-6 py-12 text-center">
+          <div className="bg-white rounded-lg shadow-lg p-6">
+            <p className="text-navy font-semibold mb-2">No vehicle assigned</p>
+            <p className="text-sm text-slate">
+              We couldn't find a sign-up request or vehicle for your account. Ask a manager to check, or sign up again at /driver/signup with a fresh code.
+            </p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -123,33 +157,15 @@ export default function DriverPage() {
             </span>
           </div>
 
-          {selectedVehicleDetails && (
+          {ownVehicle && (
             <div className="bg-gray-50 rounded-md p-3 mb-4 text-sm">
-              <p className="text-navy font-medium">{selectedVehicleDetails.label}</p>
-              <p className="text-slate text-xs mt-0.5">Plate: {selectedVehicleDetails.plate_number ?? 'Not set'}</p>
-            </div>
-          )}
-
-          {!ownVehicle && !selectedVehicleDetails && (
-            <div className="bg-orange/10 border border-orange/30 rounded-md p-3 mb-4">
-              <p className="text-sm text-orange">
-                No vehicle is linked to your account yet — ask a manager to link one at /staff/vehicles.
-              </p>
+              <p className="text-navy font-medium">{ownVehicle.label} {ownVehicle.vehicle_type && `(${ownVehicle.vehicle_type})`}</p>
+              <p className="text-slate text-xs mt-0.5">Plate: {ownVehicle.plate_number ?? 'Not set'}</p>
             </div>
           )}
 
           {!sharing ? (
             <>
-              {!ownVehicle && vehicles.length > 0 && (
-                <>
-                  <label className="block text-sm font-medium text-slate mb-2">Which vehicle are you driving?</label>
-                  <select value={selectedVehicle} onChange={(e) => setSelectedVehicle(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy">
-                    <option value="">Select vehicle…</option>
-                    {vehicles.map((v) => <option key={v.id} value={v.id}>{v.label}{v.plate_number ? ` — ${v.plate_number}` : ''}</option>)}
-                  </select>
-                </>
-              )}
-
               <label className="block text-sm font-medium text-slate mb-2">From</label>
               <select value={origin} onChange={(e) => setOrigin(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy">
                 <option value="">Select origin…</option>
@@ -166,7 +182,7 @@ export default function DriverPage() {
                 <input placeholder="Enter specific destination" value={customDestination} onChange={(e) => setCustomDestination(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 mb-4 text-navy" />
               )}
 
-              <button onClick={startSharing} disabled={!selectedVehicle} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-40 mt-2">
+              <button onClick={startSharing} className="w-full bg-orange text-white font-medium py-3 rounded-md mt-2">
                 Start sharing location
               </button>
             </>
