@@ -4,8 +4,6 @@ import { supabase } from '../lib/supabase'
 export default function DriverSignup() {
   const [fullName, setFullName] = useState('')
   const [phone, setPhone] = useState('')
-  const [vehicleLabel, setVehicleLabel] = useState('')
-  const [plateNumber, setPlateNumber] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [referenceCode, setReferenceCode] = useState('')
@@ -46,8 +44,6 @@ export default function DriverSignup() {
       user_id: data.user.id,
       full_name: fullName,
       phone,
-      vehicle_label: vehicleLabel,
-      plate_number: plateNumber || null,
       email,
       reference_code_used: referenceCode.trim(),
     })
@@ -65,9 +61,9 @@ export default function DriverSignup() {
       <div className="min-h-screen bg-navy flex flex-col items-center justify-center px-6 text-center gap-3">
         <p className="text-white font-medium">Sign-up request submitted</p>
         <p className="text-white/70 text-sm max-w-sm">
-          A manager needs to approve your account and confirm your vehicle before you can start sharing location or scanning packages. You'll be able to log in once approved.
+          A manager will assign you a vehicle soon. You can log in now, but you won't be able to share location or scan packages until a vehicle is assigned to you.
         </p>
-        <a href="/driver/login" className="text-orange underline">Back to login</a>
+        <a href="/driver/login" className="text-orange underline">Go to login</a>
       </div>
     )
   }
@@ -82,8 +78,6 @@ export default function DriverSignup() {
         <form onSubmit={handleSubmit} className="space-y-3">
           <input placeholder="Your full name" value={fullName} onChange={e => setFullName(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           <input placeholder="Your phone" value={phone} onChange={e => setPhone(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
-          <input placeholder="Vehicle label (e.g. Kojo's bike, Truck 3)" value={vehicleLabel} onChange={e => setVehicleLabel(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
-          <input placeholder="Vehicle plate number" value={plateNumber} onChange={e => setPlateNumber(e.target.value)} className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           <input type="email" placeholder="Email" value={email} onChange={e => setEmail(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           <input type="password" placeholder="Choose a password" value={password} onChange={e => setPassword(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
           <input placeholder="Reference code (required — ask a manager)" value={referenceCode} onChange={e => setReferenceCode(e.target.value)} required className="w-full border border-gray-300 rounded-md px-4 py-3 text-navy" />
@@ -91,7 +85,7 @@ export default function DriverSignup() {
           <button type="submit" disabled={saving} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-50">
             {saving ? 'Submitting…' : 'Sign up'}
           </button>
-          <a href="/driver/login" className="block text-center text-sm text-orange underline">Already approved? Log in</a>
+          <a href="/driver/login" className="block text-center text-sm text-orange underline">Already have an account? Log in</a>
         </form>
       </div>
     </div>
