@@ -40,13 +40,33 @@ export default function DriverSignup() {
       return
     }
 
-    await supabase.from('driver_signup_requests').insert({
+    // signUp() alone doesn't guarantee an active session — without one, the
+    // inserts below would silently fail their permission checks. Signing in
+    // explicitly here (our database already auto-confirms new accounts)
+    // guarantees we have a real session before saving anything.
+    if (!data.session) {
+      const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+      if (signInError) {
+        setError(`Account created, but couldn't log you in automatically: ${signInError.message}. Try logging in manually.`)
+        setSaving(false)
+        return
+      }
+    }
+
+    const { error: requestError } = await supabase.from('driver_signup_requests').insert({
       user_id: data.user.id,
       full_name: fullName,
       phone,
       email,
       reference_code_used: referenceCode.trim(),
     })
+    if (requestError) {
+      setError(`Account created, but the request could not be saved: ${requestError.message}`)
+      setSaving(false)
+      return
+    }
+
+    await supabase.from('driver_profiles').upsert({ user_id: data.user.id, full_name: fullName, phone })
 
     await supabase.from('driver_signup_codes')
       .update({ used_by: data.user.id, used_at: new Date().toISOString() })
