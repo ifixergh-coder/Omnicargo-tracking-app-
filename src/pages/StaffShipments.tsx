@@ -13,6 +13,7 @@ type Shipment = {
   total_charge: number | null
   assigned_vehicle_id: string | null
   batch_id: string | null
+  source: string
   created_at: string
 }
 
@@ -33,7 +34,7 @@ export default function StaffShipments() {
     setLoading(true)
     let query = supabase
       .from('shipments')
-      .select('id, tracking_number, sender_name, recipient_name, status, total_charge, assigned_vehicle_id, batch_id, created_at')
+      .select('id, tracking_number, sender_name, recipient_name, status, total_charge, assigned_vehicle_id, batch_id, source, created_at')
       .order('created_at', { ascending: false })
 
     if (!showAll) {
@@ -76,7 +77,12 @@ export default function StaffShipments() {
             <div key={s.id} className="bg-white rounded-lg shadow-sm p-4">
               <div className="flex items-center justify-between gap-4 flex-wrap">
                 <div>
-                  <p className="font-mono font-medium text-navy">{s.tracking_number}</p>
+                  <p className="font-mono font-medium text-navy flex items-center gap-2">
+                    {s.tracking_number}
+                    {s.source === 'customer_web' && (
+                      <span className="text-[10px] bg-orange text-white px-1.5 py-0.5 rounded font-sans font-semibold">WEB REQUEST</span>
+                    )}
+                  </p>
                   <p className="text-sm text-slate">{s.sender_name} → {s.recipient_name}</p>
                   <p className="text-xs text-slate mt-1">
                     {STATUS_LABELS[s.status] ?? s.status} · {new Date(s.created_at).toLocaleString()}
