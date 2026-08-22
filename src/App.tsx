@@ -36,6 +36,7 @@ const DailyWaybill = lazy(() => import('./pages/DailyWaybill'))
 const NewShipment = lazy(() => import('./pages/NewShipment'))
 const ShipmentEdit = lazy(() => import('./pages/ShipmentEdit'))
 const StaffBookPickup = lazy(() => import('./pages/StaffBookPickup'))
+const StaffTrackLookup = lazy(() => import('./pages/StaffTrackLookup'))
 const ShipmentLabel = lazy(() => import('./pages/ShipmentLabel'))
 const ShipmentInvoice = lazy(() => import('./pages/ShipmentInvoice'))
 const StaffScan = lazy(() => import('./pages/StaffScan'))
@@ -95,6 +96,7 @@ export default function App() {
           <Route path="/staff/shipments/new" element={<ProtectedRoute><NewShipment /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/edit" element={<ProtectedRoute><ShipmentEdit /></ProtectedRoute>} />
           <Route path="/staff/book-pickup" element={<ProtectedRoute><StaffBookPickup /></ProtectedRoute>} />
+          <Route path="/staff/track" element={<ProtectedRoute><StaffTrackLookup /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/label" element={<ProtectedRoute><ShipmentLabel /></ProtectedRoute>} />
           <Route path="/staff/shipments/:id/invoice" element={<ProtectedRoute><ShipmentInvoice /></ProtectedRoute>} />
           <Route path="/staff/vehicles" element={<ProtectedRoute><StaffVehicles /></ProtectedRoute>} />
