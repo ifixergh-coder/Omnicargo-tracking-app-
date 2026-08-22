@@ -6,6 +6,22 @@ function generateTrackingNumber(): string {
   return `OMC${digits}`
 }
 
+async function findOrCreateCustomer(
+  supabase: ReturnType<typeof createClient>,
+  name: string, phone: string, email: string | null,
+): Promise<string | null> {
+  if (!phone) return null
+  const { data: existing } = await supabase.from('customers').select('id').eq('phone', phone).maybeSingle()
+  if (existing) {
+    // Same customer booking again — update their details rather than
+    // creating a duplicate contact card
+    await supabase.from('customers').update({ name, email: email || null }).eq('id', existing.id)
+    return existing.id as string
+  }
+  const { data: created } = await supabase.from('customers').insert({ name, phone, email: email || null }).select()
+  return created?.[0]?.id ?? null
+}
+
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' })
@@ -17,7 +33,7 @@ export default async function handler(req: any, res: any) {
     pickupAddress, pickupLat, pickupLng,
     destinationAddress, destinationLat, destinationLng, destinationGps,
     cbmMode, directCbm, lengthCm, widthCm, heightCm, weightKg, boxCount,
-    packageDescription,
+    packageDescription, declaredValue,
   } = req.body ?? {}
 
   if (!senderName || !senderPhone || !recipientName || !pickupAddress) {
@@ -48,6 +64,11 @@ export default async function handler(req: any, res: any) {
 
   const trackingNumber = generateTrackingNumber()
 
+  const [senderCustomerId, recipientCustomerId] = await Promise.all([
+    findOrCreateCustomer(supabase, senderName, senderPhone, senderEmail),
+    findOrCreateCustomer(supabase, recipientName, recipientPhone, recipientEmail),
+  ])
+
   const { data: inserted, error } = await supabase.from('shipments').insert({
     tracking_number: trackingNumber,
     sender_name: senderName, sender_phone: senderPhone, sender_email: senderEmail || null,
@@ -61,14 +82,16 @@ export default async function handler(req: any, res: any) {
     length_cm: l || null, width_cm: w || null, height_cm: h || null,
     weight_kg: weight || null, cbm: cbm || null, cbm_entry_mode: cbmMode === 'direct' ? 'direct' : 'dimensions',
     box_count: parseInt(boxCount) || 1,
+    declared_value_ghs: parseFloat(declaredValue) || null,
     price_per_cbm: pricePerCbm, included_kg_per_cbm: includedKgPerCbm, extra_kg_rate: extraKgRate,
     total_charge: totalCharge || null,
     status: 'pending', source: 'customer_web',
+    sender_customer_id: senderCustomerId, recipient_customer_id: recipientCustomerId,
   }).select()
 
   if (error) {
     return res.status(500).json({ error: error.message })
   }
 
-  return res.status(200).json({ trackingNumber, id: inserted?.[0]?.id })
+  return res.status(200).json({ trackingNumber, id: inserted?.[0]?.id, totalCharge })
 }
