@@ -1,9 +1,12 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import LocationSearch from '../components/LocationSearch'
 import ContactPickerButton from '../components/ContactPickerButton'
 import PublicNav from '../components/PublicNav'
 import { reverseGeocode } from '../lib/reverseGeocode'
+import { calculateCharge } from '../lib/pricing'
+import { resolveCbm } from '../lib/cbmEntry'
+import { getPublicPricing, PricingSettings } from '../lib/publicPricing'
 
 export default function BookPickupPage() {
   const navigate = useNavigate()
@@ -34,8 +37,12 @@ export default function BookPickupPage() {
   const [heightCm, setHeightCm] = useState('')
   const [weightKg, setWeightKg] = useState('')
   const [boxCount, setBoxCount] = useState('1')
+  const [declaredValue, setDeclaredValue] = useState('')
   const [packageDescription, setPackageDescription] = useState('')
   const [prefilledFromCalculator, setPrefilledFromCalculator] = useState(false)
+  const [pricing, setPricing] = useState<PricingSettings | null>(null)
+
+  useEffect(() => { getPublicPricing().then(setPricing) }, [])
 
   useEffect(() => {
     if (searchParams.has('cbmMode')) {
@@ -49,6 +56,16 @@ export default function BookPickupPage() {
       setPrefilledFromCalculator(true)
     }
   }, [searchParams])
+
+  const cbm = useMemo(
+    () => resolveCbm(cbmMode, directCbm, lengthCm, widthCm, heightCm),
+    [cbmMode, directCbm, lengthCm, widthCm, heightCm],
+  )
+
+  const pricingResult = useMemo(() => {
+    if (!pricing) return null
+    return calculateCharge(cbm, parseFloat(weightKg) || 0, pricing.price_per_cbm, pricing.included_kg_per_cbm, pricing.extra_kg_rate)
+  }, [cbm, weightKg, pricing])
 
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -65,20 +82,14 @@ export default function BookPickupPage() {
         const { latitude, longitude } = pos.coords
         const address = await reverseGeocode(latitude, longitude)
         if (target === 'pickup') {
-          setPickupLat(latitude)
-          setPickupLng(longitude)
-          setPickupAddress(address)
+          setPickupLat(latitude); setPickupLng(longitude); setPickupAddress(address)
         } else {
-          setDestinationLat(latitude)
-          setDestinationLng(longitude)
-          setDestinationAddress(address)
+          setDestinationLat(latitude); setDestinationLng(longitude); setDestinationAddress(address)
         }
         setLocating(false)
       },
       () => {
-        setError(
-          'Could not get your location. On iPhone/iPad: check Settings → Privacy & Security → Location Services is on, and Settings → Safari → Location is not set to "Never". Or search for a landmark instead.',
-        )
+        setError('Could not get your location. On iPhone/iPad: check Settings → Privacy & Security → Location Services is on, and Settings → Safari → Location is not set to "Never". Or search for a landmark instead.')
         setLocating(false)
       },
       { enableHighAccuracy: true, timeout: 10000 },
@@ -100,7 +111,7 @@ export default function BookPickupPage() {
           pickupAddress, pickupLat, pickupLng,
           destinationAddress, destinationLat, destinationLng, destinationGps,
           cbmMode, directCbm, lengthCm, widthCm, heightCm, weightKg, boxCount,
-          packageDescription,
+          packageDescription, declaredValue,
         }),
       })
       const data = await res.json()
@@ -132,41 +143,17 @@ export default function BookPickupPage() {
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Your details (sender)</h2>
             <ContactPickerButton onSelect={(name, phone) => { setSenderName(name); setSenderPhone(phone) }} />
-            <input
-              name="sender-name" autoComplete="billing name"
-              placeholder="Your name" value={senderName} onChange={e => setSenderName(e.target.value)} required
-              className="w-full border rounded-md px-3 py-2 mb-2"
-            />
-            <input
-              name="sender-tel" autoComplete="billing tel" type="tel"
-              placeholder="Your phone number" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required
-              className="w-full border rounded-md px-3 py-2 mb-2"
-            />
-            <input
-              name="sender-email" autoComplete="billing email" type="email"
-              placeholder="Your email (optional)" value={senderEmail} onChange={e => setSenderEmail(e.target.value)}
-              className="w-full border rounded-md px-3 py-2"
-            />
+            <input name="sender-name" autoComplete="billing name" placeholder="Your name" value={senderName} onChange={e => setSenderName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
+            <input name="sender-tel" autoComplete="billing tel" type="tel" placeholder="Your phone number" value={senderPhone} onChange={e => setSenderPhone(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
+            <input name="sender-email" autoComplete="billing email" type="email" placeholder="Your email (optional)" value={senderEmail} onChange={e => setSenderEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
             <h2 className="text-sm font-semibold text-slate uppercase mb-3">Recipient details</h2>
             <ContactPickerButton onSelect={(name, phone) => { setRecipientName(name); setRecipientPhone(phone) }} />
-            <input
-              name="recipient-name" autoComplete="shipping name"
-              placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required
-              className="w-full border rounded-md px-3 py-2 mb-2"
-            />
-            <input
-              name="recipient-tel" autoComplete="shipping tel" type="tel"
-              placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)}
-              className="w-full border rounded-md px-3 py-2 mb-2"
-            />
-            <input
-              name="recipient-email" autoComplete="shipping email" type="email"
-              placeholder="Recipient email (optional)" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)}
-              className="w-full border rounded-md px-3 py-2"
-            />
+            <input name="recipient-name" autoComplete="shipping name" placeholder="Recipient name" value={recipientName} onChange={e => setRecipientName(e.target.value)} required className="w-full border rounded-md px-3 py-2 mb-2" />
+            <input name="recipient-tel" autoComplete="shipping tel" type="tel" placeholder="Recipient phone" value={recipientPhone} onChange={e => setRecipientPhone(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <input name="recipient-email" autoComplete="shipping email" type="email" placeholder="Recipient email (optional)" value={recipientEmail} onChange={e => setRecipientEmail(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
           <section className="bg-white rounded-lg p-5 shadow-sm">
@@ -209,10 +196,21 @@ export default function BookPickupPage() {
             <input placeholder="Weight (kg)" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <label className="block text-sm font-medium text-slate mb-1">Number of boxes / items</label>
             <input type="number" min="1" value={boxCount} onChange={e => setBoxCount(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <label className="block text-sm font-medium text-slate mb-1">Value of goods (GHS, optional)</label>
+            <input placeholder="e.g. 500" value={declaredValue} onChange={e => setDeclaredValue(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Package description" value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
+          {pricingResult && cbm > 0 && (
+            <div className="bg-navy rounded-lg p-5 text-center">
+              <p className="text-xs text-white/60 uppercase">Estimated cost</p>
+              <p className="text-3xl font-bold text-white">GHS {pricingResult.total.toFixed(2)}</p>
+              <p className="text-xs text-white/50 mt-1">VAT included · final cost confirmed at pickup</p>
+            </div>
+          )}
+
           {error && <p className="text-sm text-red-600">{error}</p>}
+
           <button type="submit" disabled={saving || !pickupAddress} className="w-full bg-orange text-white font-medium py-3 rounded-md disabled:opacity-50">
             {saving ? 'Submitting…' : 'Request pickup'}
           </button>
