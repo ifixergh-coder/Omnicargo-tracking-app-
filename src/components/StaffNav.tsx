@@ -1,11 +1,12 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
-import { Package, PlusCircle, PhoneCall, Truck, ScanLine, LogOut, Boxes, ClipboardList, Users, ShieldCheck } from 'lucide-react'
+import { Package, PlusCircle, PhoneCall, Search, Truck, ScanLine, LogOut, Boxes, ClipboardList, Users, ShieldCheck } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 
 const LINKS = [
   { to: '/staff/shipments', label: 'Shipments', icon: Package },
   { to: '/staff/shipments/new', label: 'New', icon: PlusCircle },
   { to: '/staff/book-pickup', label: 'Book Pickup', icon: PhoneCall },
+  { to: '/staff/track', label: 'Track', icon: Search },
   { to: '/staff/batches', label: 'Batches', icon: Boxes },
   { to: '/staff/vehicles', label: 'Vehicles', icon: Truck },
   { to: '/staff/scan', label: 'Scan', icon: ScanLine },
@@ -59,6 +60,7 @@ export default function StaffNav() {
       <div className="flex md:hidden items-center justify-between bg-navy px-4 py-3 mb-4 flex-wrap gap-2">
         <img src="/omnicargo-logo.png" alt="OmniCargo" className="h-6" />
         <div className="flex items-center gap-3 flex-wrap">
+          <Link to="/staff/track" className="text-white/60 text-xs">Track</Link>
           <Link to="/staff/book-pickup" className="text-white/60 text-xs">Book Pickup</Link>
           <Link to="/staff/customers" className="text-white/60 text-xs">Customers</Link>
           <Link to="/staff/waybill/daily" className="text-white/60 text-xs">Daily list</Link>
