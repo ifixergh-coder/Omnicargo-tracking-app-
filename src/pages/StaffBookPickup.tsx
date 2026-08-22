@@ -43,6 +43,7 @@ export default function StaffBookPickup() {
   const [heightCm, setHeightCm] = useState('')
   const [weightKg, setWeightKg] = useState('')
   const [boxCount, setBoxCount] = useState('1')
+  const [declaredValue, setDeclaredValue] = useState('')
   const [assignedVehicleId, setAssignedVehicleId] = useState('')
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [pricing, setPricing] = useState<PricingSettings | null>(null)
@@ -122,6 +123,7 @@ export default function StaffBookPickup() {
       length_cm: parseFloat(lengthCm) || null, width_cm: parseFloat(widthCm) || null, height_cm: parseFloat(heightCm) || null,
       weight_kg: parseFloat(weightKg) || null, cbm: cbm || null, cbm_entry_mode: cbmMode,
       box_count: parseInt(boxCount) || 1,
+      declared_value_ghs: parseFloat(declaredValue) || null,
       price_per_cbm: pricing.price_per_cbm, included_kg_per_cbm: pricing.included_kg_per_cbm, extra_kg_rate: pricing.extra_kg_rate,
       total_charge: result?.total || null, status: 'pending', source: 'staff',
       assigned_vehicle_id: assignedVehicleId || null,
@@ -251,12 +253,14 @@ export default function StaffBookPickup() {
             <input placeholder="Weight (kg)" value={weightKg} onChange={e => setWeightKg(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <label className="block text-sm font-medium text-slate mb-1">Number of boxes / items</label>
             <input type="number" min="1" value={boxCount} onChange={e => setBoxCount(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
+            <label className="block text-sm font-medium text-slate mb-1">Value of goods (GHS, optional)</label>
+            <input placeholder="e.g. 500" value={declaredValue} onChange={e => setDeclaredValue(e.target.value)} className="w-full border rounded-md px-3 py-2 mb-2" />
             <input placeholder="Package description" value={packageDescription} onChange={e => setPackageDescription(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </section>
 
           {result && (
             <div className="bg-white rounded-lg p-5 shadow-sm">
-              <p className="text-xs text-slate uppercase mb-1">Estimated cost (using current management rates)</p>
+              <p className="text-xs text-slate uppercase mb-1">Estimated cost (using current management rates, VAT included)</p>
               <p className="text-2xl font-bold text-navy">GHS {result.total.toFixed(2)}</p>
             </div>
           )}
