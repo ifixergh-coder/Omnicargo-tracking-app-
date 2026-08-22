@@ -15,3 +15,10 @@ export function calculateCharge(
   const excessCharge = excessWeightKg * extraKgRate
   return { baseCharge, excessWeightKg, excessCharge, total: baseCharge + excessCharge }
 }
+// Your stated prices are VAT-inclusive — this splits a total back into
+// its pre-VAT base and the 20% VAT component, for invoices and reporting
+export function splitVat(totalInclusive: number, vatRate = 0.20) {
+  const base = totalInclusive / (1 + vatRate)
+  const vat = totalInclusive - base
+  return { base, vat, total: totalInclusive }
+}
