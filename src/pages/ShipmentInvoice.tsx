@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { splitVat } from '../lib/pricing'
 
 type Shipment = {
   tracking_number: string
@@ -10,6 +11,7 @@ type Shipment = {
   weight_kg: number | null
   cbm: number | null
   total_charge: number | null
+  declared_value_ghs: number | null
   created_at: string
 }
 
@@ -24,6 +26,8 @@ export default function ShipmentInvoice() {
   }, [id])
 
   if (!shipment) return <div className="p-8 text-center text-slate">Loading…</div>
+
+  const vat = shipment.total_charge ? splitVat(shipment.total_charge) : null
 
   return (
     <div className="min-h-screen bg-gray-100 py-8 px-4 print:bg-white print:p-0">
@@ -65,6 +69,24 @@ export default function ShipmentInvoice() {
               <td className="py-2">CBM</td>
               <td className="py-2 text-right">{shipment.cbm?.toFixed(3) ?? '—'} m³</td>
             </tr>
+            {shipment.declared_value_ghs != null && (
+              <tr className="border-b border-gray-200">
+                <td className="py-2">Declared value of goods</td>
+                <td className="py-2 text-right">GHS {shipment.declared_value_ghs.toFixed(2)}</td>
+              </tr>
+            )}
+            {vat && (
+              <>
+                <tr className="border-b border-gray-200">
+                  <td className="py-2">Subtotal (excl. VAT)</td>
+                  <td className="py-2 text-right">GHS {vat.base.toFixed(2)}</td>
+                </tr>
+                <tr className="border-b border-gray-200">
+                  <td className="py-2">VAT (20%)</td>
+                  <td className="py-2 text-right">GHS {vat.vat.toFixed(2)}</td>
+                </tr>
+              </>
+            )}
             <tr>
               <td className="py-2 font-semibold">Total charge</td>
               <td className="py-2 text-right font-semibold">GHS {shipment.total_charge?.toFixed(2) ?? '—'}</td>
